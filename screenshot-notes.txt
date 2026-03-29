@@ -1,0 +1,6 @@
+Screenshot 1 (pre-login): 
+- Dark background (#0a0a0f), centered NullSphere logo with shield icon
+- "Virus Space Isolation System — CISO/SOC Dashboard" subtitle
+- Cyan "Sign in to SOC Console" button
+- JetBrains Mono font for title, Inter for subtitle
+- Clean, professional SOC login screen

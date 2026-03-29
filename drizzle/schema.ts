@@ -1,4 +1,4 @@
-import { int, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
+import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, json, boolean } from "drizzle-orm/mysql-core";
 
 /**
  * Core user table backing auth flow.
@@ -25,4 +25,120 @@ export const users = mysqlTable("users", {
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 
-// TODO: Add your tables here
+/** 脅威イベントテーブル - 検知された脅威の記録 */
+export const threats = mysqlTable("threats", {
+  id: int("id").autoincrement().primaryKey(),
+  threatId: varchar("threatId", { length: 64 }).notNull().unique(),
+  type: mysqlEnum("type", ["intrusion", "malware", "privilege_escalation", "data_exfiltration", "lateral_movement", "reconnaissance"]).notNull(),
+  severity: mysqlEnum("severity", ["critical", "high", "medium", "low"]).notNull(),
+  status: mysqlEnum("status", ["detected", "blocked", "isolated", "deceived", "traced", "resolved"]).notNull(),
+  sourceIp: varchar("sourceIp", { length: 45 }).notNull(),
+  sourceLat: varchar("sourceLat", { length: 20 }),
+  sourceLng: varchar("sourceLng", { length: 20 }),
+  sourceCountry: varchar("sourceCountry", { length: 64 }),
+  sourceCity: varchar("sourceCity", { length: 128 }),
+  targetHost: varchar("targetHost", { length: 256 }),
+  targetPort: int("targetPort"),
+  command: text("command"),
+  attackerId: int("attackerId"),
+  vmId: int("vmId"),
+  description: text("description"),
+  detectedAt: timestamp("detectedAt").defaultNow().notNull(),
+  resolvedAt: timestamp("resolvedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type Threat = typeof threats.$inferSelect;
+
+/** 攻撃者プロファイルテーブル */
+export const attackers = mysqlTable("attackers", {
+  id: int("id").autoincrement().primaryKey(),
+  attackerId: varchar("attackerId", { length: 64 }).notNull().unique(),
+  ip: varchar("ip", { length: 45 }).notNull(),
+  os: varchar("os", { length: 128 }),
+  browser: varchar("browser", { length: 128 }),
+  country: varchar("country", { length: 64 }),
+  city: varchar("city", { length: 128 }),
+  lat: varchar("lat", { length: 20 }),
+  lng: varchar("lng", { length: 20 }),
+  isp: varchar("isp", { length: 256 }),
+  threatLevel: mysqlEnum("threatLevel", ["critical", "high", "medium", "low"]).notNull(),
+  commandHistory: json("commandHistory"),
+  firstSeen: timestamp("firstSeen").defaultNow().notNull(),
+  lastSeen: timestamp("lastSeen").defaultNow().notNull(),
+  isActive: boolean("isActive").default(true).notNull(),
+  profileData: json("profileData"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type Attacker = typeof attackers.$inferSelect;
+
+/** セキュリティイベントログ */
+export const events = mysqlTable("events", {
+  id: int("id").autoincrement().primaryKey(),
+  eventId: varchar("eventId", { length: 64 }).notNull().unique(),
+  type: mysqlEnum("type", ["ebpf_hook", "vm_transfer", "decoy_access", "block", "alert", "system", "trace"]).notNull(),
+  severity: mysqlEnum("severity", ["critical", "high", "medium", "low", "info"]).notNull(),
+  source: varchar("source", { length: 128 }).notNull(),
+  message: text("message").notNull(),
+  details: json("details"),
+  threatId: varchar("threatId", { length: 64 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type Event = typeof events.$inferSelect;
+
+/** 隔離VM (The Void) テーブル */
+export const vms = mysqlTable("vms", {
+  id: int("id").autoincrement().primaryKey(),
+  vmId: varchar("vmId", { length: 64 }).notNull().unique(),
+  name: varchar("name", { length: 128 }).notNull(),
+  status: mysqlEnum("status", ["running", "stopped", "spawning", "destroying", "error"]).notNull(),
+  cpuUsage: int("cpuUsage").default(0),
+  memoryUsage: int("memoryUsage").default(0),
+  diskUsage: int("diskUsage").default(0),
+  networkIn: int("networkIn").default(0),
+  networkOut: int("networkOut").default(0),
+  assignedThreatId: varchar("assignedThreatId", { length: 64 }),
+  attackerIp: varchar("attackerIp", { length: 45 }),
+  uptime: int("uptime").default(0),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Vm = typeof vms.$inferSelect;
+
+/** デコイ (NullHorizon) テーブル */
+export const decoys = mysqlTable("decoys", {
+  id: int("id").autoincrement().primaryKey(),
+  decoyId: varchar("decoyId", { length: 64 }).notNull().unique(),
+  type: mysqlEnum("type", ["password_file", "database", "ssh_key", "config_file", "api_key", "certificate"]).notNull(),
+  name: varchar("name", { length: 256 }).notNull(),
+  status: mysqlEnum("status", ["active", "inactive", "triggered", "expired"]).notNull(),
+  content: text("content"),
+  accessCount: int("accessCount").default(0),
+  lastAccessedBy: varchar("lastAccessedBy", { length: 45 }),
+  lastAccessedAt: timestamp("lastAccessedAt"),
+  vmId: varchar("vmId", { length: 64 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Decoy = typeof decoys.$inferSelect;
+
+/** 通知テーブル */
+export const notifications = mysqlTable("notifications", {
+  id: int("id").autoincrement().primaryKey(),
+  notificationId: varchar("notificationId", { length: 64 }).notNull().unique(),
+  type: mysqlEnum("type", ["email", "in_app", "webhook"]).notNull(),
+  severity: mysqlEnum("severity", ["critical", "high", "medium", "low"]).notNull(),
+  title: varchar("title", { length: 256 }).notNull(),
+  message: text("message").notNull(),
+  threatId: varchar("threatId", { length: 64 }),
+  isRead: boolean("isRead").default(false).notNull(),
+  sentAt: timestamp("sentAt").defaultNow().notNull(),
+  readAt: timestamp("readAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type Notification = typeof notifications.$inferSelect;
