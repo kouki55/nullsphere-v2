@@ -1,11 +1,4 @@
-import { useAuth } from "@/_core/hooks/useAuth";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import {
   Sidebar,
   SidebarContent,
@@ -22,11 +15,9 @@ import {
   SidebarGroupContent,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { getLoginUrl } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
 import {
   LayoutDashboard,
-  LogOut,
   PanelLeft,
   Shield,
   Globe,
@@ -35,14 +26,11 @@ import {
   Server,
   Users,
   Box,
-  Siren,
   Bell,
   Brain,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
-import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
-import { Button } from "./ui/button";
 
 const navSections = [
   {
@@ -93,44 +81,10 @@ export default function DashboardLayout({
     const saved = localStorage.getItem(SIDEBAR_WIDTH_KEY);
     return saved ? parseInt(saved, 10) : DEFAULT_WIDTH;
   });
-  const { loading, user } = useAuth();
 
   useEffect(() => {
     localStorage.setItem(SIDEBAR_WIDTH_KEY, sidebarWidth.toString());
   }, [sidebarWidth]);
-
-  if (loading) {
-    return <DashboardLayoutSkeleton />;
-  }
-
-  if (!user) {
-    return (
-      <div className="flex items-center justify-center min-h-screen ns-grid-bg">
-        <div className="flex flex-col items-center gap-8 p-8 max-w-md w-full">
-          <div className="flex flex-col items-center gap-4">
-            <div className="flex items-center gap-2">
-              <Shield className="h-10 w-10 text-primary" />
-              <h1 className="text-3xl font-bold tracking-tight text-primary ns-mono">
-                NullSphere
-              </h1>
-            </div>
-            <p className="text-sm text-muted-foreground text-center">
-              Virus Space Isolation System — CISO/SOC Dashboard
-            </p>
-          </div>
-          <Button
-            onClick={() => {
-              window.location.href = getLoginUrl();
-            }}
-            size="lg"
-            className="w-full"
-          >
-            Sign in to SOC Console
-          </Button>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <SidebarProvider
@@ -156,7 +110,6 @@ function DashboardLayoutContent({
   children,
   setSidebarWidth,
 }: DashboardLayoutContentProps) {
-  const { user, logout } = useAuth();
   const [location, setLocation] = useLocation();
   const { state, toggleSidebar } = useSidebar();
   const isCollapsed = state === "collapsed";
@@ -264,34 +217,21 @@ function DashboardLayoutContent({
           </SidebarContent>
 
           <SidebarFooter className="p-3 border-t border-border/30">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button className="flex items-center gap-3 rounded-lg px-1 py-1 hover:bg-accent/50 transition-colors w-full text-left group-data-[collapsible=icon]:justify-center focus:outline-none">
-                  <Avatar className="h-8 w-8 border border-primary/30 shrink-0">
-                    <AvatarFallback className="text-xs font-medium bg-primary/10 text-primary">
-                      {user?.name?.charAt(0).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1 min-w-0 group-data-[collapsible=icon]:hidden">
-                    <p className="text-sm font-medium truncate leading-none">
-                      {user?.name || "Operator"}
-                    </p>
-                    <p className="text-[10px] text-muted-foreground truncate mt-1 ns-mono">
-                      SOC Analyst
-                    </p>
-                  </div>
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
-                <DropdownMenuItem
-                  onClick={logout}
-                  className="cursor-pointer text-destructive focus:text-destructive"
-                >
-                  <LogOut className="mr-2 h-4 w-4" />
-                  <span>Sign out</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <div className="flex items-center gap-3 rounded-lg px-1 py-1 w-full text-left group-data-[collapsible=icon]:justify-center">
+              <Avatar className="h-8 w-8 border border-primary/30 shrink-0">
+                <AvatarFallback className="text-xs font-medium bg-primary/10 text-primary">
+                  SO
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex-1 min-w-0 group-data-[collapsible=icon]:hidden">
+                <p className="text-sm font-medium truncate leading-none">
+                  SOC Operator
+                </p>
+                <p className="text-[10px] text-muted-foreground truncate mt-1 ns-mono">
+                  Security Analyst
+                </p>
+              </div>
+            </div>
           </SidebarFooter>
         </Sidebar>
         <div

@@ -1,0 +1,6 @@
+調査結果:
+- 公開サイト(nullspher-kbdwr8bz.manus.space)にアクセスすると、Manus OAuthログイン画面にリダイレクトされる
+- ユーザーはログインできないと報告
+- 画面遷移時に「予期せぬエラー」が発生
+- 原因: protectedProcedureを使っているため、未認証状態でAPIを呼ぶとUNAUTHORIZEDエラーが発生し、ログインページにリダイレクトされる
+- 解決策: 全APIをpublicProcedureに変更し、DashboardLayoutの認証チェックを除去する

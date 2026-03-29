@@ -4,11 +4,11 @@ import { threats, attackers, events, vms, decoys, notifications } from "../drizz
 import { getDb } from "./db";
 import { invokeLLM } from "./_core/llm";
 import { notifyOwner } from "./_core/notification";
-import { protectedProcedure, router } from "./_core/trpc";
+import { publicProcedure, router } from "./_core/trpc";
 
 // ─── Dashboard Stats ───
 export const dashboardRouter = router({
-  stats: protectedProcedure.query(async () => {
+  stats: publicProcedure.query(async () => {
     const db = await getDb();
     if (!db) throw new Error("Database not available");
 
@@ -49,7 +49,7 @@ export const dashboardRouter = router({
   }),
 
   // Component health
-  componentHealth: protectedProcedure.query(async () => {
+  componentHealth: publicProcedure.query(async () => {
     const db = await getDb();
     if (!db) throw new Error("Database not available");
 
@@ -69,13 +69,13 @@ export const dashboardRouter = router({
 
 // ─── Threats ───
 export const threatRouter = router({
-  list: protectedProcedure.query(async () => {
+  list: publicProcedure.query(async () => {
     const db = await getDb();
     if (!db) throw new Error("Database not available");
     return db.select().from(threats).orderBy(desc(threats.detectedAt));
   }),
 
-  getById: protectedProcedure.input(z.object({ id: z.number() })).query(async ({ input }) => {
+  getById: publicProcedure.input(z.object({ id: z.number() })).query(async ({ input }) => {
     const db = await getDb();
     if (!db) throw new Error("Database not available");
     const [result] = await db.select().from(threats).where(eq(threats.id, input.id));
@@ -85,13 +85,13 @@ export const threatRouter = router({
 
 // ─── Attackers ───
 export const attackerRouter = router({
-  list: protectedProcedure.query(async () => {
+  list: publicProcedure.query(async () => {
     const db = await getDb();
     if (!db) throw new Error("Database not available");
     return db.select().from(attackers).orderBy(desc(attackers.lastSeen));
   }),
 
-  getById: protectedProcedure.input(z.object({ id: z.number() })).query(async ({ input }) => {
+  getById: publicProcedure.input(z.object({ id: z.number() })).query(async ({ input }) => {
     const db = await getDb();
     if (!db) throw new Error("Database not available");
     const [result] = await db.select().from(attackers).where(eq(attackers.id, input.id));
@@ -101,7 +101,7 @@ export const attackerRouter = router({
 
 // ─── Events ───
 export const eventRouter = router({
-  list: protectedProcedure.input(z.object({
+  list: publicProcedure.input(z.object({
     type: z.enum(["ebpf_hook", "vm_transfer", "decoy_access", "block", "alert", "system", "trace"]).optional(),
     limit: z.number().min(1).max(100).default(50),
   }).optional()).query(async ({ input }) => {
@@ -118,13 +118,13 @@ export const eventRouter = router({
 
 // ─── VMs ───
 export const vmRouter = router({
-  list: protectedProcedure.query(async () => {
+  list: publicProcedure.query(async () => {
     const db = await getDb();
     if (!db) throw new Error("Database not available");
     return db.select().from(vms).orderBy(desc(vms.updatedAt));
   }),
 
-  updateStatus: protectedProcedure.input(z.object({
+  updateStatus: publicProcedure.input(z.object({
     id: z.number(),
     status: z.enum(["running", "stopped", "spawning", "destroying"]),
   })).mutation(async ({ input }) => {
@@ -137,13 +137,13 @@ export const vmRouter = router({
 
 // ─── Decoys ───
 export const decoyRouter = router({
-  list: protectedProcedure.query(async () => {
+  list: publicProcedure.query(async () => {
     const db = await getDb();
     if (!db) throw new Error("Database not available");
     return db.select().from(decoys).orderBy(desc(decoys.updatedAt));
   }),
 
-  create: protectedProcedure.input(z.object({
+  create: publicProcedure.input(z.object({
     type: z.enum(["password_file", "database", "ssh_key", "config_file", "api_key", "certificate"]),
     name: z.string().min(1),
     content: z.string().optional(),
@@ -166,27 +166,27 @@ export const decoyRouter = router({
 
 // ─── Notifications ───
 export const notificationRouter = router({
-  list: protectedProcedure.query(async () => {
+  list: publicProcedure.query(async () => {
     const db = await getDb();
     if (!db) throw new Error("Database not available");
     return db.select().from(notifications).orderBy(desc(notifications.sentAt));
   }),
 
-  markRead: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ input }) => {
+  markRead: publicProcedure.input(z.object({ id: z.number() })).mutation(async ({ input }) => {
     const db = await getDb();
     if (!db) throw new Error("Database not available");
     await db.update(notifications).set({ isRead: true, readAt: new Date() }).where(eq(notifications.id, input.id));
     return { success: true };
   }),
 
-  markAllRead: protectedProcedure.mutation(async () => {
+  markAllRead: publicProcedure.mutation(async () => {
     const db = await getDb();
     if (!db) throw new Error("Database not available");
     await db.update(notifications).set({ isRead: true, readAt: new Date() }).where(eq(notifications.isRead, false));
     return { success: true };
   }),
 
-  sendAlert: protectedProcedure.input(z.object({
+  sendAlert: publicProcedure.input(z.object({
     title: z.string(),
     message: z.string(),
     severity: z.enum(["critical", "high", "medium", "low"]),
@@ -216,7 +216,7 @@ export const notificationRouter = router({
 
 // ─── LLM Analysis ───
 export const analysisRouter = router({
-  analyzeThreat: protectedProcedure.input(z.object({
+  analyzeThreat: publicProcedure.input(z.object({
     threatId: z.string(),
   })).mutation(async ({ input }) => {
     const db = await getDb();
