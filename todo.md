@@ -49,3 +49,10 @@
 - [x] ダッシュボードのイベントリアルタイム表示機能
 - [x] ダッシュボードからカーネル操作API実装（/proc/nullsphere/config制御）
 - [x] 統合テスト・ドキュメント作成
+
+## Phase 8: nl_bridge.py 実運用接続
+- [x] nl_bridge_enhanced.py 作成（リトライ・再接続機能）
+- [x] test-nl-bridge.py テストサーバー作成
+- [x] NL_BRIDGE_SETUP.md ドキュメント作成
+- [ ] Express サーバーとの接続テスト実施
+- [ ] 最終チェックポイント保存
