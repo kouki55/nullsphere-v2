@@ -2,8 +2,9 @@ import { trpc } from "@/lib/trpc";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ScrollText, Filter } from "lucide-react";
+import { ScrollText, Filter, Wifi, WifiOff } from "lucide-react";
 import { useState } from "react";
+import { useKernelEvents } from "@/hooks/useKernelEvents";
 
 const typeConfig: Record<string, { label: string; color: string }> = {
   ebpf_hook: { label: "eBPF Hook", color: "bg-purple-500/20 text-purple-400 border-purple-500/30" },
@@ -28,6 +29,7 @@ type EventType = "ebpf_hook" | "vm_transfer" | "decoy_access" | "block" | "alert
 export default function Events() {
   const [filter, setFilter] = useState<EventType | undefined>(undefined);
   const { data: eventList } = trpc.events.list.useQuery(filter ? { type: filter, limit: 50 } : { limit: 50 });
+  const { events: kernelEvents, isConnected } = useKernelEvents();
 
   const filterTypes: (EventType | undefined)[] = [undefined, "ebpf_hook", "vm_transfer", "decoy_access", "block", "alert", "system", "trace"];
 
@@ -40,9 +42,24 @@ export default function Events() {
             eBPFフック、VM転送、デコイアクセス等のセキュリティイベントをリアルタイム表示
           </p>
         </div>
-        <div className="flex items-center gap-1.5">
-          <div className="h-2 w-2 rounded-full bg-green-400 ns-pulse" />
-          <span className="text-[10px] ns-mono text-muted-foreground">LIVE</span>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5">
+            <div className="h-2 w-2 rounded-full bg-green-400 ns-pulse" />
+            <span className="text-[10px] ns-mono text-muted-foreground">LIVE</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            {isConnected ? (
+              <>
+                <Wifi className="w-4 h-4 text-cyan-400" />
+                <span className="text-[10px] ns-mono text-cyan-400">KERNEL</span>
+              </>
+            ) : (
+              <>
+                <WifiOff className="w-4 h-4 text-gray-500" />
+                <span className="text-[10px] ns-mono text-gray-500">OFFLINE</span>
+              </>
+            )}
+          </div>
         </div>
       </div>
 
@@ -67,11 +84,36 @@ export default function Events() {
         <CardHeader className="pb-3">
           <CardTitle className="text-sm font-medium flex items-center gap-2">
             <ScrollText className="h-4 w-4 text-primary" />
-            Security Events ({eventList?.length ?? 0})
+            Security Events ({(eventList?.length ?? 0) + kernelEvents.length})
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-1">
+            {kernelEvents.map((ke) => (
+              <div
+                key={`kernel-${ke.ts_ns}`}
+                className="p-3 rounded-lg border border-border/30 bg-background/30 border-l-2 border-l-cyan-500 hover:bg-background/60 transition-colors animate-pulse"
+              >
+                <div className="flex items-start gap-3">
+                  <div className="flex flex-col items-center gap-1 shrink-0 pt-0.5">
+                    <Badge variant="outline" className="text-[9px] ns-mono bg-cyan-500/20 text-cyan-400 border-cyan-500/30">
+                      {ke.type.toUpperCase()}
+                    </Badge>
+                    <Badge variant="outline" className="text-[9px] ns-mono">
+                      {ke.threat_name}
+                    </Badge>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm leading-relaxed">{ke.filename} (PID: {ke.pid})</p>
+                    <div className="flex items-center gap-3 mt-1.5 text-[10px] text-muted-foreground ns-mono">
+                      <span>{ke.comm}</span>
+                      {ke.net && <span className="text-primary">{ke.net.daddr}:{ke.net.dport}</span>}
+                      <span>{new Date(ke.ts).toLocaleString("ja-JP")}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
             {eventList?.map((e) => {
               const tc = typeConfig[e.type];
               return (
