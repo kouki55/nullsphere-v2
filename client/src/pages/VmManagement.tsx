@@ -3,7 +3,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Server, Play, Square, Cpu, HardDrive, Wifi, Clock } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Server, Play, Square, Cpu, HardDrive, Wifi, Clock, Shield, Lock, Zap } from "lucide-react";
+import { useState } from "react";
+import { toast } from "sonner";
 
 const statusConfig: Record<string, { color: string; label: string }> = {
   running: { color: "bg-green-500/20 text-green-400 border-green-500/30", label: "Running" },
@@ -22,6 +25,12 @@ function formatUptime(seconds: number): string {
 export default function VmManagement() {
   const { data: vmList, refetch } = trpc.vms.list.useQuery();
   const updateStatus = trpc.vms.updateStatus.useMutation({ onSuccess: () => refetch() });
+  const isolateMutation = trpc.kernel.isolateProcess.useMutation();
+  const blockNetworkMutation = trpc.kernel.blockNetwork.useMutation();
+  const tracingMutation = trpc.kernel.enableTracing.useMutation();
+  
+  const [selectedVmId, setSelectedVmId] = useState<number | null>(null);
+  const [isolateReason, setIsolateReason] = useState("");
 
   return (
     <div className="space-y-4">
@@ -109,8 +118,87 @@ export default function VmManagement() {
                   <span>Uptime: {formatUptime(vm.uptime ?? 0)}</span>
                 </div>
 
+                {/* Kernel Controls */}
+                {selectedVmId === vm.id && (
+                  <div className="space-y-2 pt-2 border-t border-border/30">
+                    <Input
+                      placeholder="隔離理由を入力..."
+                      value={isolateReason}
+                      onChange={(e) => setIsolateReason(e.target.value)}
+                      className="h-7 text-xs"
+                    />
+                    <div className="flex gap-1.5">
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        className="flex-1 h-7 text-xs gap-1"
+                        onClick={async () => {
+                          try {
+                            await isolateMutation.mutateAsync({
+                              pid: parseInt(vm.vmId.split("-")[1] || "0"),
+                              reason: isolateReason || "Manual isolation",
+                            });
+                            toast.success("プロセスを隔離しました");
+                            setIsolateReason("");
+                          } catch (error) {
+                            toast.error("隔離に失敗しました");
+                          }
+                        }}
+                        disabled={isolateMutation.isPending}
+                      >
+                        <Shield className="h-3 w-3" /> 隔離
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="flex-1 h-7 text-xs gap-1"
+                        onClick={async () => {
+                          try {
+                            await blockNetworkMutation.mutateAsync({
+                              pid: parseInt(vm.vmId.split("-")[1] || "0"),
+                              duration_seconds: 300,
+                            });
+                            toast.success("ネットワークをブロックしました");
+                          } catch (error) {
+                            toast.error("ブロックに失敗しました");
+                          }
+                        }}
+                        disabled={blockNetworkMutation.isPending}
+                      >
+                        <Lock className="h-3 w-3" /> ブロック
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="flex-1 h-7 text-xs gap-1"
+                        onClick={async () => {
+                          try {
+                            await tracingMutation.mutateAsync({
+                              pid: parseInt(vm.vmId.split("-")[1] || "0"),
+                            });
+                            toast.success("トレーシングを有効化しました");
+                          } catch (error) {
+                            toast.error("有効化に失敗しました");
+                          }
+                        }}
+                        disabled={tracingMutation.isPending}
+                      >
+                        <Zap className="h-3 w-3" /> トレース
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
                 {/* Controls */}
                 <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    variant={selectedVmId === vm.id ? "default" : "outline"}
+                    className="flex-1 h-8 text-xs"
+                    onClick={() => setSelectedVmId(selectedVmId === vm.id ? null : vm.id)}
+                  >
+                    {selectedVmId === vm.id ? "非表示" : "操作"}
+                  </Button>
                   {vm.status === "stopped" ? (
                     <Button
                       size="sm"

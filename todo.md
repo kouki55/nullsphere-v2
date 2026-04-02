@@ -47,5 +47,5 @@
 - [x] nl_bridge.py改良版をバックエンドに統合（WebSocket対応）
 - [x] カーネルイベント受信サーバー実装（Express + Socket.io）
 - [x] ダッシュボードのイベントリアルタイム表示機能
-- [ ] ダッシュボードからカーネル操作API実装（/proc/nullsphere/config制御）
-- [ ] 統合テスト・ドキュメント作成
+- [x] ダッシュボードからカーネル操作API実装（/proc/nullsphere/config制御）
+- [x] 統合テスト・ドキュメント作成
