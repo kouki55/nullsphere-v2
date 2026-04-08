@@ -86,19 +86,19 @@ export const kernelControlRouter = router({
         reason: z.string().max(256),
       })
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
       const success = await writeKernelConfig({
         action: "isolate",
         pid: input.pid,
         reason: input.reason,
       });
 
+      // 監査ログに記録
+      await logKernelOperation(ctx.user.id, ctx.user.name, input.pid.toString(), `PID ${input.pid}`, "process_isolate");
+
       return {
         success,
         message: `Process ${input.pid} isolation initiated`,
-    
-    // 監査ログに記録
-    await logKernelOperation(ctx.user.id, ctx.user.name, input.pid.toString(), `PID ${input.pid}`, "process_isolate");
       };
     }),
 
@@ -135,16 +135,16 @@ export const kernelControlRouter = router({
         duration_seconds: z.number().min(1).max(3600),
       })
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
       const success = await writeKernelConfig({
         action: "block_network",
         pid: input.pid,
         duration_seconds: input.duration_seconds,
       });
 
-    
-    // 監査ログに記録
-    await logKernelOperation(ctx.user.id, ctx.user.name, input.pid.toString(), `PID ${input.pid}`, "network_block");
+      // 監査ログに記録
+      await logKernelOperation(ctx.user.id, ctx.user.name, input.pid.toString(), `PID ${input.pid}`, "network_block");
+
       return {
         success,
         message: `Network blocked for PID ${input.pid} for ${input.duration_seconds}s`,
@@ -166,13 +166,13 @@ export const kernelControlRouter = router({
         pid: input.pid,
       });
 
+      // 監査ログに記録
+      await logKernelOperation(ctx.user.id, ctx.user.name, input.pid.toString(), `PID ${input.pid}`, "tracing_enable");
+
       return {
         success,
         message: `Tracing enabled for PID ${input.pid}`,
       };
-    
-    // 監査ログに記録
-    await logKernelOperation(ctx.user.id, ctx.user.name, input.pid.toString(), `PID ${input.pid}`, "tracing_enable");
     }),
 
   /**
@@ -184,16 +184,16 @@ export const kernelControlRouter = router({
         pid: z.number().min(1),
       })
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
       const success = await writeKernelConfig({
         action: "disable_tracing",
         pid: input.pid,
       });
 
+      // 監査ログに記録
+      await logKernelOperation(ctx.user.id, ctx.user.name, input.pid.toString(), `PID ${input.pid}`, "tracing_disable");
+
       return {
-    
-    // 監査ログに記録
-    await logKernelOperation(ctx.user.id, ctx.user.name, input.pid.toString(), `PID ${input.pid}`, "tracing_disable");
         success,
         message: `Tracing disabled for PID ${input.pid}`,
       };
