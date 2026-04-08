@@ -22,6 +22,13 @@
       "when": 1775608026322,
       "tag": "0002_odd_tarantula",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1775609797651,
+      "tag": "0003_romantic_domino",
+      "breakpoints": true
     }
   ]
 }

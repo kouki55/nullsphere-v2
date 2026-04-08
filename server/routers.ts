@@ -6,6 +6,7 @@ import { dashboardRouter, threatRouter, attackerRouter, eventRouter, vmRouter, d
 import { kernelControlRouter } from "./kernel-control";
 import { adminRouter } from "./admin";
 import { auditRouter } from "./audit-router";
+import { alertRouter } from "./alert-router";
 
 export const appRouter = router({
     // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
@@ -32,6 +33,7 @@ export const appRouter = router({
   kernel: kernelControlRouter,
   admin: adminRouter,
   audit: auditRouter,
+  alert: alertRouter,
 });
 
 export type AppRouter = typeof appRouter;

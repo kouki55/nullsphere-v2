@@ -181,3 +181,36 @@ export const auditLogs = mysqlTable("auditLogs", {
 
 export type AuditLog = typeof auditLogs.$inferSelect;
 export type InsertAuditLog = typeof auditLogs.$inferInsert;
+
+/** アラート設定テーブル - 監査ログアラートの設定 */
+export const alertSettings = mysqlTable("alertSettings", {
+  id: int("id").autoincrement().primaryKey(),
+  alertId: varchar("alertId", { length: 64 }).notNull().unique(),
+  userId: int("userId").notNull(),
+  actionType: mysqlEnum("actionType", [
+    "user_promote",
+    "user_demote",
+    "vm_start",
+    "vm_stop",
+    "vm_reboot",
+    "decoy_create",
+    "decoy_delete",
+    "decoy_activate",
+    "decoy_deactivate",
+    "process_isolate",
+    "network_block",
+    "tracing_enable",
+    "tracing_disable",
+    "threat_resolve",
+    "threat_block",
+    "settings_change",
+    "all",
+  ]).notNull(),
+  notificationMethod: mysqlEnum("notificationMethod", ["email", "in-app", "webhook"]).default("in-app").notNull(),
+  webhookUrl: text("webhookUrl"),
+  isActive: boolean("isActive").default(true).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type AlertSetting = typeof alertSettings.$inferSelect;
+export type InsertAlertSetting = typeof alertSettings.$inferInsert;

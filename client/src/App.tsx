@@ -19,6 +19,7 @@ const Notifications = lazy(() => import("./pages/Notifications"));
 const Analysis = lazy(() => import("./pages/Analysis"));
 const AdminManagement = lazy(() => import("./pages/AdminManagement"));
 const AuditLog = lazy(() => import("./pages/AuditLog"));
+const AuditLogEnhanced = lazy(() => import("./pages/AuditLogEnhanced"));
 
 function PageLoader() {
   return (
