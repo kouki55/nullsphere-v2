@@ -29,6 +29,7 @@ import {
   Bell,
   Brain,
   Lock,
+  FileText,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
@@ -68,6 +69,7 @@ const navSections = [
     label: "Administration",
     items: [
       { icon: Lock, label: "Admin Management", path: "/admin" },
+      { icon: FileText, label: "Audit Log", path: "/audit" },
     ],
   },
 ];

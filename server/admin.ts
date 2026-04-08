@@ -4,6 +4,7 @@ import { getDb } from "./db";
 import { users } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
+import { logUserPromote, logUserDemote } from "./audit";
 
 export const adminRouter = router({
   /**
@@ -83,6 +84,14 @@ export const adminRouter = router({
 
         console.log(`[Admin] User ${input.userId} promoted to admin by ${ctx.user.id}`);
 
+        // 監査ログに記録
+        await logUserPromote(
+          ctx.user.id,
+          ctx.user.name,
+          input.userId,
+          user.name
+        );
+
         return { success: true, message: `User promoted to admin` };
       } catch (error) {
         if (error instanceof TRPCError) throw error;
@@ -139,6 +148,14 @@ export const adminRouter = router({
           .where(eq(users.id, input.userId));
 
         console.log(`[Admin] User ${input.userId} demoted to user by ${ctx.user.id}`);
+
+        // 監査ログに記録
+        await logUserDemote(
+          ctx.user.id,
+          ctx.user.name,
+          input.userId,
+          user.name
+        );
 
         return { success: true, message: `User demoted to regular user` };
       } catch (error) {

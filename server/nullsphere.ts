@@ -5,6 +5,7 @@ import { getDb } from "./db";
 import { invokeLLM } from "./_core/llm";
 import { notifyOwner } from "./_core/notification";
 import { publicProcedure, router, adminProcedure } from "./_core/trpc";
+import { logVmOperation, logDecoyOperation } from "./audit";
 
 // ─── Dashboard Stats ───
 export const dashboardRouter = router({
@@ -127,10 +128,23 @@ export const vmRouter = router({
   updateStatus: adminProcedure.input(z.object({
     id: z.number(),
     status: z.enum(["running", "stopped", "spawning", "destroying"]),
-  })).mutation(async ({ input }) => {
+  })).mutation(async ({ ctx, input }) => {
     const db = await getDb();
     if (!db) throw new Error("Database not available");
     await db.update(vms).set({ status: input.status }).where(eq(vms.id, input.id));
+    
+    // VM 情報を取得
+    const [vm] = await db.select().from(vms).where(eq(vms.id, input.id));
+    
+    // 監査ログに記録
+    const actionMap: Record<string, "vm_start" | "vm_stop" | "vm_reboot"> = {
+      "running": "vm_start",
+      "stopped": "vm_stop",
+      "spawning": "vm_start",
+      "destroying": "vm_reboot",
+    };
+    const action = actionMap[input.status] || "vm_start";
+    await logVmOperation(ctx.user.id, ctx.user.name, input.id, vm?.name || null, action);
     return { success: true };
   }),
 });
@@ -148,7 +162,7 @@ export const decoyRouter = router({
     name: z.string().min(1),
     content: z.string().optional(),
     vmId: z.string().optional(),
-  })).mutation(async ({ input }) => {
+  })).mutation(async ({ ctx, input }) => {
     const db = await getDb();
     if (!db) throw new Error("Database not available");
     const decoyId = `DCY-${Date.now().toString(36).toUpperCase()}`;
@@ -160,6 +174,9 @@ export const decoyRouter = router({
       content: input.content ?? null,
       vmId: input.vmId ?? null,
     });
+    
+    // 監査ログに記録
+    await logDecoyOperation(ctx.user.id, ctx.user.name, decoyId, input.name, "decoy_create");
     return { success: true, decoyId };
   }),
 });
@@ -172,7 +189,7 @@ export const notificationRouter = router({
     return db.select().from(notifications).orderBy(desc(notifications.sentAt));
   }),
 
-  markRead: publicProcedure.input(z.object({ id: z.number() })).mutation(async ({ input }) => {
+  markRead: publicProcedure.input(z.object({ id: z.number() })).mutation(async ({ ctx, input }) => {
     const db = await getDb();
     if (!db) throw new Error("Database not available");
     await db.update(notifications).set({ isRead: true, readAt: new Date() }).where(eq(notifications.id, input.id));
@@ -191,7 +208,7 @@ export const notificationRouter = router({
     message: z.string(),
     severity: z.enum(["critical", "high", "medium", "low"]),
     threatId: z.string().optional(),
-  })).mutation(async ({ input }) => {
+  })).mutation(async ({ ctx, input }) => {
     const db = await getDb();
     if (!db) throw new Error("Database not available");
     const notificationId = `NTF-${Date.now().toString(36).toUpperCase()}`;
@@ -218,7 +235,7 @@ export const notificationRouter = router({
 export const analysisRouter = router({
   analyzeThreat: publicProcedure.input(z.object({
     threatId: z.string(),
-  })).mutation(async ({ input }) => {
+  })).mutation(async ({ ctx, input }) => {
     const db = await getDb();
     if (!db) throw new Error("Database not available");
 

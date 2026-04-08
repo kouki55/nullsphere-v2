@@ -142,3 +142,42 @@ export const notifications = mysqlTable("notifications", {
 });
 
 export type Notification = typeof notifications.$inferSelect;
+/** 監査ログテーブル - admin操作の記録 */
+export const auditLogs = mysqlTable("auditLogs", {
+  id: int("id").autoincrement().primaryKey(),
+  logId: varchar("logId", { length: 64 }).notNull().unique(),
+  userId: int("userId").notNull(),
+  userName: varchar("userName", { length: 256 }),
+  action: mysqlEnum("action", [
+    "user_promote",
+    "user_demote",
+    "vm_start",
+    "vm_stop",
+    "vm_reboot",
+    "decoy_create",
+    "decoy_delete",
+    "decoy_activate",
+    "decoy_deactivate",
+    "process_isolate",
+    "network_block",
+    "tracing_enable",
+    "tracing_disable",
+    "threat_resolve",
+    "threat_block",
+    "settings_change",
+    "other",
+  ]).notNull(),
+  resourceType: varchar("resourceType", { length: 64 }),
+  resourceId: varchar("resourceId", { length: 64 }),
+  resourceName: varchar("resourceName", { length: 256 }),
+  details: json("details"),
+  status: mysqlEnum("status", ["success", "failure"]).default("success").notNull(),
+  errorMessage: text("errorMessage"),
+  ipAddress: varchar("ipAddress", { length: 45 }),
+  userAgent: text("userAgent"),
+  timestamp: timestamp("timestamp").defaultNow().notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type AuditLog = typeof auditLogs.$inferSelect;
+export type InsertAuditLog = typeof auditLogs.$inferInsert;
