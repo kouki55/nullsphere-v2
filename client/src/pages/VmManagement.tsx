@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Server, Play, Square, Cpu, HardDrive, Wifi, Clock, Shield, Lock, Zap } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { useAuth } from "@/_core/hooks/useAuth";
 
 const statusConfig: Record<string, { color: string; label: string }> = {
   running: { color: "bg-green-500/20 text-green-400 border-green-500/30", label: "Running" },
@@ -23,6 +24,9 @@ function formatUptime(seconds: number): string {
 }
 
 export default function VmManagement() {
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
+  
   const { data: vmList, refetch } = trpc.vms.list.useQuery();
   const updateStatus = trpc.vms.updateStatus.useMutation({ onSuccess: () => refetch() });
   const isolateMutation = trpc.kernel.isolateProcess.useMutation();
@@ -119,7 +123,7 @@ export default function VmManagement() {
                 </div>
 
                 {/* Kernel Controls */}
-                {selectedVmId === vm.id && (
+                {selectedVmId === vm.id && isAdmin && (
                   <div className="space-y-2 pt-2 border-t border-border/30">
                     <Input
                       placeholder="隔離理由を入力..."
@@ -191,15 +195,17 @@ export default function VmManagement() {
 
                 {/* Controls */}
                 <div className="flex gap-2">
-                  <Button
-                    size="sm"
-                    variant={selectedVmId === vm.id ? "default" : "outline"}
-                    className="flex-1 h-8 text-xs"
-                    onClick={() => setSelectedVmId(selectedVmId === vm.id ? null : vm.id)}
-                  >
-                    {selectedVmId === vm.id ? "非表示" : "操作"}
-                  </Button>
-                  {vm.status === "stopped" ? (
+                  {isAdmin && (
+                    <Button
+                      size="sm"
+                      variant={selectedVmId === vm.id ? "default" : "outline"}
+                      className="flex-1 h-8 text-xs"
+                      onClick={() => setSelectedVmId(selectedVmId === vm.id ? null : vm.id)}
+                    >
+                      {selectedVmId === vm.id ? "非表示" : "操作"}
+                    </Button>
+                  )}
+                  {isAdmin && (vm.status === "stopped" ? (
                     <Button
                       size="sm"
                       variant="outline"
@@ -219,7 +225,12 @@ export default function VmManagement() {
                     >
                       <Square className="h-3 w-3" /> Stop
                     </Button>
-                  ) : null}
+                  ) : null)}
+                  {!isAdmin && (
+                    <div className="flex-1 h-8 flex items-center justify-center text-xs text-muted-foreground border border-border/30 rounded">
+                      Admin only
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>

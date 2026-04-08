@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Textarea } from "@/components/ui/textarea";
 import { Box, Plus, Eye, FileKey, Database, Key, FileText, Shield, Award } from "lucide-react";
 import { useState } from "react";
+import { useAuth } from "@/_core/hooks/useAuth";
 
 const typeConfig: Record<string, { label: string; icon: typeof FileKey }> = {
   password_file: { label: "Password File", icon: FileKey },
@@ -27,6 +28,9 @@ const statusColor: Record<string, string> = {
 };
 
 export default function DecoyControl() {
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
+  
   const { data: decoyList, refetch } = trpc.decoys.list.useQuery();
   const createDecoy = trpc.decoys.create.useMutation({ onSuccess: () => { refetch(); setOpen(false); } });
   const [open, setOpen] = useState(false);
@@ -41,6 +45,7 @@ export default function DecoyControl() {
             偽パスワードファイル、囮DB等の欺瞞データ生成設定
           </p>
         </div>
+        {isAdmin && (
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
             <Button size="sm" className="gap-1.5">
@@ -98,6 +103,7 @@ export default function DecoyControl() {
             </div>
           </DialogContent>
         </Dialog>
+        )}
       </div>
 
       {/* Stats */}

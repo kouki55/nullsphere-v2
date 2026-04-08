@@ -4,7 +4,7 @@ import { threats, attackers, events, vms, decoys, notifications } from "../drizz
 import { getDb } from "./db";
 import { invokeLLM } from "./_core/llm";
 import { notifyOwner } from "./_core/notification";
-import { publicProcedure, router } from "./_core/trpc";
+import { publicProcedure, router, adminProcedure } from "./_core/trpc";
 
 // ─── Dashboard Stats ───
 export const dashboardRouter = router({
@@ -124,7 +124,7 @@ export const vmRouter = router({
     return db.select().from(vms).orderBy(desc(vms.updatedAt));
   }),
 
-  updateStatus: publicProcedure.input(z.object({
+  updateStatus: adminProcedure.input(z.object({
     id: z.number(),
     status: z.enum(["running", "stopped", "spawning", "destroying"]),
   })).mutation(async ({ input }) => {
@@ -143,7 +143,7 @@ export const decoyRouter = router({
     return db.select().from(decoys).orderBy(desc(decoys.updatedAt));
   }),
 
-  create: publicProcedure.input(z.object({
+  create: adminProcedure.input(z.object({
     type: z.enum(["password_file", "database", "ssh_key", "config_file", "api_key", "certificate"]),
     name: z.string().min(1),
     content: z.string().optional(),

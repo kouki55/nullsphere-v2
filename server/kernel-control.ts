@@ -6,7 +6,7 @@
  */
 
 import { z } from "zod";
-import { publicProcedure, router } from "./_core/trpc";
+import { publicProcedure, router, adminProcedure } from "./_core/trpc";
 import { TRPCError } from "@trpc/server";
 import * as fs from "fs";
 import * as path from "path";
@@ -78,7 +78,7 @@ export const kernelControlRouter = router({
   /**
    * プロセスを隔離する
    */
-  isolateProcess: publicProcedure
+  isolateProcess: adminProcedure
     .input(
       z.object({
         pid: z.number().min(1),
@@ -101,7 +101,7 @@ export const kernelControlRouter = router({
   /**
    * プロセスをホワイトリストに追加
    */
-  whitelistProcess: publicProcedure
+  whitelistProcess: adminProcedure
     .input(
       z.object({
         process_name: z.string().max(256),
@@ -124,7 +124,7 @@ export const kernelControlRouter = router({
   /**
    * プロセスのネットワークをブロック
    */
-  blockNetwork: publicProcedure
+  blockNetwork: adminProcedure
     .input(
       z.object({
         pid: z.number().min(1),
@@ -147,7 +147,7 @@ export const kernelControlRouter = router({
   /**
    * プロセスのトレーシングを有効化
    */
-  enableTracing: publicProcedure
+  enableTracing: adminProcedure
     .input(
       z.object({
         pid: z.number().min(1),
@@ -168,7 +168,7 @@ export const kernelControlRouter = router({
   /**
    * プロセスのトレーシングを無効化
    */
-  disableTracing: publicProcedure
+  disableTracing: adminProcedure
     .input(
       z.object({
         pid: z.number().min(1),
