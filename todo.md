@@ -93,8 +93,8 @@
 - [x] 監査ログ実装完了とチェックポイント保存
 
 ## Phase 14: 監査ログ実装ギャップ解決
-- [ ] auditLogs テーブルを webdev_execute_sql で実データベースに適用
-- [ ] kernel-control.ts の全操作に監査ログ記録を統合
-- [ ] 監査ログ記録テストを実DB前提で修正
-- [ ] Audit Log UI の E2E テストを追加
-- [ ] 最終チェックポイント保存
+- [x] auditLogs テーブルを webdev_execute_sql で実データベースに適用
+- [x] kernel-control.ts の全操作に監査ログ記録を統合
+- [x] 監査ログ記録テストを実DB前提で修正
+- [x] Audit Log UI の E2E テストを追加
+- [x] 最終チェックポイント保存

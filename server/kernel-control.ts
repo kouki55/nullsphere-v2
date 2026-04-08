@@ -10,6 +10,7 @@ import { publicProcedure, router, adminProcedure } from "./_core/trpc";
 import { TRPCError } from "@trpc/server";
 import * as fs from "fs";
 import * as path from "path";
+import { logKernelOperation } from "./audit";
 
 // カーネル操作スキーマ
 const KernelActionSchema = z.union([
@@ -95,6 +96,9 @@ export const kernelControlRouter = router({
       return {
         success,
         message: `Process ${input.pid} isolation initiated`,
+    
+    // 監査ログに記録
+    await logKernelOperation(ctx.user.id, ctx.user.name, input.pid.toString(), `PID ${input.pid}`, "process_isolate");
       };
     }),
 
@@ -138,6 +142,9 @@ export const kernelControlRouter = router({
         duration_seconds: input.duration_seconds,
       });
 
+    
+    // 監査ログに記録
+    await logKernelOperation(ctx.user.id, ctx.user.name, input.pid.toString(), `PID ${input.pid}`, "network_block");
       return {
         success,
         message: `Network blocked for PID ${input.pid} for ${input.duration_seconds}s`,
@@ -153,7 +160,7 @@ export const kernelControlRouter = router({
         pid: z.number().min(1),
       })
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
       const success = await writeKernelConfig({
         action: "enable_tracing",
         pid: input.pid,
@@ -163,6 +170,9 @@ export const kernelControlRouter = router({
         success,
         message: `Tracing enabled for PID ${input.pid}`,
       };
+    
+    // 監査ログに記録
+    await logKernelOperation(ctx.user.id, ctx.user.name, input.pid.toString(), `PID ${input.pid}`, "tracing_enable");
     }),
 
   /**
@@ -181,6 +191,9 @@ export const kernelControlRouter = router({
       });
 
       return {
+    
+    // 監査ログに記録
+    await logKernelOperation(ctx.user.id, ctx.user.name, input.pid.toString(), `PID ${input.pid}`, "tracing_disable");
         success,
         message: `Tracing disabled for PID ${input.pid}`,
       };
