@@ -28,6 +28,7 @@ import {
   Box,
   Bell,
   Brain,
+  Lock,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
@@ -61,6 +62,12 @@ const navSections = [
     items: [
       { icon: Bell, label: "Notifications", path: "/notifications" },
       { icon: Brain, label: "AI Analysis", path: "/analysis" },
+    ],
+  },
+  {
+    label: "Administration",
+    items: [
+      { icon: Lock, label: "Admin Management", path: "/admin" },
     ],
   },
 ];

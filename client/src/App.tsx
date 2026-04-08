@@ -17,6 +17,7 @@ const VmManagement = lazy(() => import("./pages/VmManagement"));
 const DecoyControl = lazy(() => import("./pages/DecoyControl"));
 const Notifications = lazy(() => import("./pages/Notifications"));
 const Analysis = lazy(() => import("./pages/Analysis"));
+const AdminManagement = lazy(() => import("./pages/AdminManagement"));
 
 function PageLoader() {
   return (
@@ -44,6 +45,7 @@ function Router() {
           <Route path="/decoys" component={DecoyControl} />
           <Route path="/notifications" component={Notifications} />
           <Route path="/analysis" component={Analysis} />
+          <Route path="/admin" component={AdminManagement} />
           <Route path="/404" component={NotFound} />
           <Route component={NotFound} />
         </Switch>
