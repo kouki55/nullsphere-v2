@@ -162,6 +162,7 @@ export const auditLogs = mysqlTable("auditLogs", {
     "network_block",
     "tracing_enable",
     "tracing_disable",
+    "process_whitelist",
     "threat_resolve",
     "threat_block",
     "settings_change",

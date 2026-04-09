@@ -139,3 +139,11 @@
 - [x] デフォルトシークレット削除・環境変数強制
 - [x] 修正内容テストと検証
 - [x] 最終チェックポイント保存
+
+## Phase 21: 残存セキュリティ問题修正
+- [x] publicProcedure 15箇所を protectedProcedure/adminProcedure に変更（nullsphere.ts）
+- [x] whitelistProcess に監査ログ機能を追加（ctx 追加・logKernelOperation 呼び出し）
+- [x] /proc/nullsphere/status のプレーンテキスト形式対応（JSON.parse 廃止）
+- [x] appendFileSync を fs.promises.appendFile に変更（ブロッキング廃止）
+- [x] 修正内容の統合テストと検証
+- [x] 最終チェックポイント保存

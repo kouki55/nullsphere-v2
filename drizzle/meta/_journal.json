@@ -43,6 +43,13 @@
       "when": 1775695877023,
       "tag": "0005_dark_colleen_wing",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "5",
+      "when": 1775719257150,
+      "tag": "0006_thin_caretaker",
+      "breakpoints": true
     }
   ]
 }

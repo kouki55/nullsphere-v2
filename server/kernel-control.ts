@@ -6,9 +6,10 @@
  */
 
 import { z } from "zod";
-import { publicProcedure, router, adminProcedure } from "./_core/trpc";
+import { publicProcedure, router, adminProcedure, protectedProcedure } from "./_core/trpc";
 import { TRPCError } from "@trpc/server";
 import * as fs from "fs";
+import { promises as fsPromises } from "fs";
 import * as path from "path";
 import { logKernelOperation } from "./audit";
 
@@ -60,9 +61,9 @@ async function writeKernelConfig(action: KernelAction): Promise<boolean> {
     // アクションを JSON 形式でシリアライズ
     const commandStr = JSON.stringify(action) + "\n";
 
-    // /proc/nullsphere/config に書き込み
+    // /proc/nullsphere/config に書き込み（非同期で実行）
     // 注: 実運用では root 権限が必要
-    fs.appendFileSync(configPath, commandStr);
+    await fsPromises.appendFile(configPath, commandStr);
 
     console.log("[KernelControl] Action written to kernel:", action);
     return true;
@@ -112,12 +113,15 @@ export const kernelControlRouter = router({
         ttl_seconds: z.number().min(60).max(86400).default(3600),
       })
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
       const success = await writeKernelConfig({
         action: "whitelist",
         process_name: input.process_name,
         ttl_seconds: input.ttl_seconds,
       });
+
+      // 監査ログに記録
+      await logKernelOperation(ctx.user.id, ctx.user.name, input.process_name, `Process ${input.process_name}`, "process_whitelist");
 
       return {
         success,
@@ -201,8 +205,9 @@ export const kernelControlRouter = router({
 
   /**
    * カーネルの状態を取得
+   * /proc/nullsphere/status はプレーンテキスト形式（Mode : INTERCEPT\nUptime : ...）
    */
-  getStatus: publicProcedure.query(async () => {
+  getStatus: protectedProcedure.query(async () => {
     try {
       const statusPath = "/proc/nullsphere/status";
 
@@ -215,12 +220,30 @@ export const kernelControlRouter = router({
       }
 
       const statusContent = fs.readFileSync(statusPath, "utf-8");
-      const status = JSON.parse(statusContent);
+      
+      // Try JSON first, then fall back to plain text format
+      let parsedStatus: Record<string, any> = {};
+      
+      try {
+        parsedStatus = JSON.parse(statusContent);
+      } catch {
+        // Plain text format: parse key:value lines
+        const lines = statusContent.trim().split("\n");
+        for (const line of lines) {
+          const match = line.match(/^\s*([^:]+)\s*:\s*(.*)$/);
+          if (match) {
+            const key = match[1].trim().toLowerCase().replace(/\s+/g, "_");
+            const value = match[2].trim();
+            // Convert to number if possible
+            parsedStatus[key] = isNaN(Number(value)) ? value : Number(value);
+          }
+        }
+      }
 
       return {
         status: "online",
         message: "Kernel module operational",
-        ...status,
+        ...parsedStatus,
       };
     } catch (error) {
       console.error("[KernelControl] Failed to read kernel status:", error);

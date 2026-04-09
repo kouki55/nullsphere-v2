@@ -138,7 +138,7 @@ export async function logKernelOperation(
   adminName: string | null | undefined,
   processId: string,
   processName: string | null | undefined,
-  action: "process_isolate" | "network_block" | "tracing_enable" | "tracing_disable",
+  action: "process_isolate" | "network_block" | "tracing_enable" | "tracing_disable" | "process_whitelist",
   ipAddress?: string,
   userAgent?: string
 ) {
