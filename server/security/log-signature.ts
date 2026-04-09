@@ -5,9 +5,17 @@ import crypto from "crypto";
  * Event Storming 攻撃（ログ偽装）から守るため、全ログに HMAC-SHA256 署名を追加
  */
 
-// 環境変数から署名キーを取得（本番環境では厳密に管理）
-const SIGNATURE_SECRET = process.env.LOG_SIGNATURE_SECRET || "default-dev-secret-change-in-production";
-const AUTH_TOKEN_SECRET = process.env.AUTH_TOKEN_SECRET || "default-dev-token-change-in-production";
+// 環境変数から署名キーを取得（必須）
+if (!process.env.LOG_SIGNATURE_SECRET) {
+  console.error("[FATAL] LOG_SIGNATURE_SECRET environment variable is required");
+  process.exit(1);
+}
+if (!process.env.AUTH_TOKEN_SECRET) {
+  console.error("[FATAL] AUTH_TOKEN_SECRET environment variable is required");
+  process.exit(1);
+}
+const SIGNATURE_SECRET = process.env.LOG_SIGNATURE_SECRET;
+const AUTH_TOKEN_SECRET = process.env.AUTH_TOKEN_SECRET;
 
 /**
  * ログエントリの型定義

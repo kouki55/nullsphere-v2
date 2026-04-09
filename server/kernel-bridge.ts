@@ -1,21 +1,12 @@
-/**
- * kernel-bridge.ts
- * ================
- * NullSphere カーネルモジュール (nullsphere.ko) との統合
- *
- * 役割:
- *   1. nl_bridge.py からのイベントを受信 (TCP ソケット)
- *   2. イベントをデータベースに記録
- *   3. WebSocket 経由でダッシュボードにブロードキャスト
- *   4. ダッシュボールからの操作をカーネルに反映
- */
-
+import { nanoid } from "nanoid";
 import { Server as SocketIOServer } from "socket.io";
 import { Server as HTTPServer } from "http";
 import { getDb } from "./db";
 import { events, threats, attackers } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
 import net from "net";
+import { signLog, verifyLogSignature, generateAuthToken, validateLog, type SignedLogEntry } from "./security/log-signature";
+import { applyKernelBridgeSecurity } from "./security/kernel-bridge-security";
 
 export interface KernelEvent {
   source: string;
@@ -54,10 +45,6 @@ export class KernelBridge {
     this.io = io;
   }
 
-  /**
-   * nl_bridge.py からのイベント受信サーバーを起動
-   * ポート: 9998 (nl_bridge.py は 9999 に接続)
-   */
   public async start(port: number = 9998) {
     const db = await getDb();
     if (!db) {
@@ -74,10 +61,19 @@ export class KernelBridge {
           if (!line.trim()) continue;
 
           try {
-            const event: KernelEvent = JSON.parse(line);
+            // ログ署名検証
+            const logData = JSON.parse(line);
+            const validation = validateLog(logData);
+            if (!validation.valid) {
+              console.warn(
+                `[KernelBridge] Invalid log signature: ${validation.reason}`
+              );
+              continue;
+            }
+
+            const event: KernelEvent = logData;
             await this.handleKernelEvent(event, db);
 
-            // WebSocket でダッシュボードにブロードキャスト
             this.io.emit("kernel:event", event);
           } catch (e) {
             console.error("[KernelBridge] JSON parse error:", e);
@@ -100,9 +96,6 @@ export class KernelBridge {
     });
   }
 
-  /**
-   * カーネルイベントをデータベースに記録
-   */
   private async handleKernelEvent(
     event: KernelEvent,
     db: Awaited<ReturnType<typeof getDb>>
@@ -111,9 +104,7 @@ export class KernelBridge {
 
     try {
       const timestamp = new Date(event.ts);
-
-      // イベントテーブルに記録
-      const eventId = `event-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      const eventId = `event-${nanoid()}`;
       const eventTypeMap: Record<string, any> = {
         exec: "ebpf_hook",
         file: "ebpf_hook",
@@ -139,9 +130,8 @@ export class KernelBridge {
         createdAt: timestamp,
       });
 
-      // 脅威レベルが HIGH 以上の場合、threats テーブルに記録
       if (event.threat_level >= 3) {
-        const threatId = `threat-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        const threatId = `threat-${nanoid()}`;
         const severityMap: Record<number, "critical" | "high" | "medium" | "low"> = {
           4: "critical",
           3: "high",
@@ -159,7 +149,6 @@ export class KernelBridge {
         });
       }
 
-      // 攻撃者プロファイルを更新または作成
       if (event.net?.daddr) {
         const existing = await db
           .select()
@@ -175,10 +164,10 @@ export class KernelBridge {
         };
 
         if (existing.length > 0) {
-          // 既存の攻撃者を更新
-          const commands = existing[0].commandHistory
-            ? JSON.parse(existing[0].commandHistory as string)
-            : [];
+          let commands: any[] = Array.isArray(existing[0].commandHistory) ? existing[0].commandHistory : [];
+          if (typeof commands === "string") {
+            commands = JSON.parse(commands);
+          }
           commands.push({
             timestamp: timestamp.toISOString(),
             command: event.filename,
@@ -188,32 +177,31 @@ export class KernelBridge {
           await db
             .update(attackers)
             .set({
-              commandHistory: JSON.stringify(commands),
+              commandHistory: commands,
               lastSeen: timestamp,
               threatLevel: threatLevelMap[event.threat_level] || "low",
             })
             .where(eq(attackers.ip, event.net.daddr));
         } else {
-          // 新規攻撃者を作成
-          const attackerId = `attacker-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+          const attackerId = `attacker-${nanoid()}`;
           await db.insert(attackers).values({
             attackerId,
             ip: event.net.daddr,
             os: "unknown",
             country: "unknown",
             threatLevel: threatLevelMap[event.threat_level] || "low",
-            commandHistory: JSON.stringify([
+            commandHistory: [
               {
                 timestamp: timestamp.toISOString(),
                 command: event.filename,
                 args: event.args,
               },
-            ]),
-            profileData: JSON.stringify({
+            ],
+            profileData: {
               firstSeen: timestamp.toISOString(),
               port: event.net.dport,
               protocol: event.net.proto,
-            }),
+            },
             firstSeen: timestamp,
             lastSeen: timestamp,
           });
@@ -228,19 +216,11 @@ export class KernelBridge {
     }
   }
 
-  /**
-   * ダッシュボードからのカーネル操作コマンドを処理
-   */
   public async executeKernelCommand(
     command: string,
     params?: Record<string, unknown>
   ): Promise<boolean> {
-    // /proc/nullsphere/config に書き込み
-    // 実装例: mode=1, uid_wl=1000, clear_wl など
     console.log(`[KernelBridge] Execute command: ${command}`, params);
-
-    // 実装は Linux 環境でのみ可能
-    // Windows では模擬応答を返す
     return true;
   }
 
@@ -250,5 +230,13 @@ export class KernelBridge {
       this.running = false;
       console.log("[KernelBridge] Stopped");
     }
+  }
+
+  public generateLogSignature(logData: string): string {
+    return JSON.stringify(signLog(JSON.parse(logData)));
+  }
+
+  public getAuthToken(): string {
+    return generateAuthToken("kernel-bridge");
   }
 }

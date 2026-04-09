@@ -125,9 +125,17 @@
 - [x] ロール拡張テスト
 
 ## Phase 19: Event Storming + io_uring + メモリハイジャック攻撃対策
-- [ ] 9999 ポート認証・ログ署名実装（HMAC-SHA256）
-- [ ] io_uring syscall hook 追加・監視ロジック実装
-- [ ] eBPF リングバッファ管理・バッファ飽和検知実装
-- [ ] ptrace 制限・メモリアクセス監視実装
-- [ ] 攻撃棄御テストと動作確認
-- [ ] 最終チェックポイント保存
+- [x] 9999 ポート認証・ログ署名実装（HMAC-SHA256）
+- [x] io_uring syscall hook 追加・監視ロジック実装
+- [x] eBPF リングバッファ管理・バッファ飽和検知実装
+- [x] ptrace 制限・メモリアクセス監視実装
+- [x] 攻撃棄御テストと動作確認
+- [x] 最終チェックポイント保存
+
+## Phase 20: セキュリティ脆弱性修正
+- [x] publicProcedure を protectedProcedure に戻す（読み取りAPI）
+- [x] commandHistory 二重エンコード修正
+- [x] ID生成を nanoid に置换
+- [x] デフォルトシークレット削除・環境変数強制
+- [x] 修正内容テストと検証
+- [x] 最終チェックポイント保存
