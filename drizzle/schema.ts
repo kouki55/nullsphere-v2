@@ -16,7 +16,7 @@ export const users = mysqlTable("users", {
   name: text("name"),
   email: varchar("email", { length: 320 }),
   loginMethod: varchar("loginMethod", { length: 64 }),
-  role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
+  role: mysqlEnum("role", ["user", "admin", "analyst", "operator"]).default("user").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
@@ -165,6 +165,9 @@ export const auditLogs = mysqlTable("auditLogs", {
     "threat_resolve",
     "threat_block",
     "settings_change",
+    "permission_request_create",
+    "permission_request_approve",
+    "permission_request_reject",
     "other",
   ]).notNull(),
   resourceType: varchar("resourceType", { length: 64 }),
@@ -214,3 +217,20 @@ export const alertSettings = mysqlTable("alertSettings", {
 });
 export type AlertSetting = typeof alertSettings.$inferSelect;
 export type InsertAlertSetting = typeof alertSettings.$inferInsert;
+
+/** 権限リクエストテーブル - ユーザーの権限昇格リクエストを管理 */
+export const permissionRequests = mysqlTable("permissionRequests", {
+  id: int("id").autoincrement().primaryKey(),
+  requestId: varchar("requestId", { length: 64 }).notNull().unique(),
+  userId: int("userId").notNull(),
+  requestedRole: mysqlEnum("requestedRole", ["admin", "analyst", "operator"]).notNull(),
+  reason: text("reason"),
+  status: mysqlEnum("status", ["pending", "approved", "rejected"]).default("pending").notNull(),
+  reviewedBy: int("reviewedBy"),
+  reviewedAt: timestamp("reviewedAt"),
+  rejectionReason: text("rejectionReason"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type PermissionRequest = typeof permissionRequests.$inferSelect;
+export type InsertPermissionRequest = typeof permissionRequests.$inferInsert;

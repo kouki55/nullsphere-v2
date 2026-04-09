@@ -20,6 +20,9 @@ const Analysis = lazy(() => import("./pages/Analysis"));
 const AdminManagement = lazy(() => import("./pages/AdminManagement"));
 const AuditLog = lazy(() => import("./pages/AuditLog"));
 const AuditLogEnhanced = lazy(() => import("./pages/AuditLogEnhanced"));
+const PermissionRequest = lazy(() => import("./pages/PermissionRequest"));
+const PermissionRequestAdmin = lazy(() => import("./pages/PermissionRequestAdmin"));
+const AuditLogExport = lazy(() => import("./pages/AuditLogExport"));
 
 function PageLoader() {
   return (
@@ -49,6 +52,9 @@ function Router() {
           <Route path="/analysis" component={Analysis} />
           <Route path="/admin" component={AdminManagement} />
           <Route path="/audit" component={AuditLog} />
+          <Route path="/permission-request" component={PermissionRequest} />
+          <Route path="/permission-request-admin" component={PermissionRequestAdmin} />
+          <Route path="/audit-export" component={AuditLogExport} />
           <Route path="/404" component={NotFound} />
           <Route component={NotFound} />
         </Switch>

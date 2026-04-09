@@ -1,0 +1,2 @@
+ALTER TABLE `auditLogs` MODIFY COLUMN `action` enum('user_promote','user_demote','vm_start','vm_stop','vm_reboot','decoy_create','decoy_delete','decoy_activate','decoy_deactivate','process_isolate','network_block','tracing_enable','tracing_disable','threat_resolve','threat_block','settings_change','permission_request_create','permission_request_approve','permission_request_reject','other') NOT NULL;--> statement-breakpoint
+ALTER TABLE `users` MODIFY COLUMN `role` enum('user','admin','analyst','operator') NOT NULL DEFAULT 'user';

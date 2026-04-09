@@ -30,6 +30,8 @@ import {
   Brain,
   Lock,
   FileText,
+  ClipboardList,
+  Download,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
@@ -70,6 +72,8 @@ const navSections = [
     items: [
       { icon: Lock, label: "Admin Management", path: "/admin" },
       { icon: FileText, label: "Audit Log", path: "/audit" },
+      { icon: Download, label: "Audit Export", path: "/audit-export" },
+      { icon: ClipboardList, label: "Permission Request", path: "/permission-request" },
     ],
   },
 ];
