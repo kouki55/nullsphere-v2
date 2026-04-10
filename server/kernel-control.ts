@@ -204,52 +204,61 @@ export const kernelControlRouter = router({
     }),
 
   /**
-   * カーネルの状態を取得
-   * /proc/nullsphere/status はプレーンテキスト形式（Mode : INTERCEPT\nUptime : ...）
+   * カーネルの状态を取得
+   * /proc/nullsphere/status はプレーンテキスト形式（Mode : INTERCEPT\nUptime : ...\uff09
    */
   getStatus: protectedProcedure.query(async () => {
     try {
       const statusPath = "/proc/nullsphere/status";
 
-      if (!fs.existsSync(statusPath)) {
-        return {
-          status: "offline",
-          message: "Kernel module not loaded",
-          components: [],
-        };
-      }
-
-      const statusContent = fs.readFileSync(statusPath, "utf-8");
-      
-      // Try JSON first, then fall back to plain text format
-      let parsedStatus: Record<string, any> = {};
-      
       try {
-        parsedStatus = JSON.parse(statusContent);
-      } catch {
-        // Plain text format: parse key:value lines
-        const lines = statusContent.trim().split("\n");
-        for (const line of lines) {
-          const match = line.match(/^\s*([^:]+)\s*:\s*(.*)$/);
-          if (match) {
-            const key = match[1].trim().toLowerCase().replace(/\s+/g, "_");
-            const value = match[2].trim();
-            // Convert to number if possible
-            parsedStatus[key] = isNaN(Number(value)) ? value : Number(value);
+        // 非同期でファイルを読み込み
+        const statusContent = await fsPromises.readFile(statusPath, "utf-8");
+        
+        // Try JSON first, then fall back to plain text format
+        let parsedStatus: Record<string, any> = {};
+        
+        try {
+          parsedStatus = JSON.parse(statusContent);
+        } catch {
+          // Plain text format: parse key:value lines
+          const lines = statusContent.trim().split("\n");
+          for (const line of lines) {
+            const match = line.match(/^\s*([^:]+)\s*:\s*(.*)$/);
+            if (match) {
+              const key = match[1].trim().toLowerCase().replace(/\s+/g, "_");
+              const value = match[2].trim();
+              // Convert to number if possible
+              parsedStatus[key] = isNaN(Number(value)) ? value : Number(value);
+            }
           }
         }
-      }
 
-      return {
-        status: "online",
-        message: "Kernel module operational",
-        ...parsedStatus,
-      };
+        return {
+          status: "online",
+          message: "Kernel module operational",
+          ...parsedStatus,
+        };
+      } catch (error) {
+        // ファイルがない場合（カーネル未載置）
+        if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+          return {
+            status: "offline",
+            message: "Kernel module not loaded",
+            components: [],
+          };
+        }
+        console.error("[KernelControl] Failed to read kernel status:", error);
+        return {
+          status: "error",
+          message: "Failed to read kernel status",
+        };
+      }
     } catch (error) {
-      console.error("[KernelControl] Failed to read kernel status:", error);
+      console.error("[KernelControl] Unexpected error in getStatus:", error);
       return {
         status: "error",
-        message: "Failed to read kernel status",
+        message: "Unexpected error reading kernel status",
       };
     }
   }),

@@ -50,6 +50,13 @@
       "when": 1775719257150,
       "tag": "0006_thin_caretaker",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "5",
+      "when": 1775779500461,
+      "tag": "0007_chubby_marvel_boy",
+      "breakpoints": true
     }
   ]
 }

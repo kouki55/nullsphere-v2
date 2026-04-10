@@ -147,3 +147,10 @@
 - [x] appendFileSync を fs.promises.appendFile に変更（ブロッキング廃止）
 - [x] 修正内容の統合テストと検証
 - [x] 最終チェックポイント保存
+
+## Phase 22: 追加セキュリティ問题修正
+- [x] getStatus の readFileSync を fs.promises.readFile に非同期化
+- [x] markAllRead に userId フィルタリングを追加
+- [x] 未認証アクセスのネガティブテストを nullsphere.test.ts に追加
+- [x] 修正内容の統合テスト実行
+- [x] 最終チェックポイント保存

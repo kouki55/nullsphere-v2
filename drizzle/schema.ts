@@ -130,6 +130,7 @@ export type Decoy = typeof decoys.$inferSelect;
 export const notifications = mysqlTable("notifications", {
   id: int("id").autoincrement().primaryKey(),
   notificationId: varchar("notificationId", { length: 64 }).notNull().unique(),
+  userId: int("userId").notNull(),
   type: mysqlEnum("type", ["email", "in_app", "webhook"]).notNull(),
   severity: mysqlEnum("severity", ["critical", "high", "medium", "low"]).notNull(),
   title: varchar("title", { length: 256 }).notNull(),

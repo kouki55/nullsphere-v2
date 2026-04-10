@@ -196,10 +196,12 @@ export const notificationRouter = router({
     return { success: true };
   }),
 
-  markAllRead: protectedProcedure.mutation(async () => {
+  markAllRead: protectedProcedure.mutation(async ({ ctx }) => {
     const db = await getDb();
     if (!db) throw new Error("Database not available");
-    await db.update(notifications).set({ isRead: true, readAt: new Date() }).where(eq(notifications.isRead, false));
+    await db.update(notifications)
+      .set({ isRead: true, readAt: new Date() })
+      .where(and(eq(notifications.isRead, false), eq(notifications.userId, ctx.user.id)));
     return { success: true };
   }),
 
@@ -214,6 +216,7 @@ export const notificationRouter = router({
     const notificationId = `NTF-${Date.now().toString(36).toUpperCase()}`;
     await db.insert(notifications).values({
       notificationId,
+      userId: ctx.user.id,
       type: "in_app",
       severity: input.severity,
       title: input.title,
