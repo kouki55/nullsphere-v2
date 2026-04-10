@@ -4,8 +4,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
-import { Server, Play, Square, Cpu, HardDrive, Wifi, Clock, Shield, Lock, Zap } from "lucide-react";
-import { useState } from "react";
+import { Server, Play, Square, Cpu, HardDrive, Wifi, Clock, Shield, Lock, Zap, AlertCircle, CheckCircle, Eye } from "lucide-react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { useAuth } from "@/_core/hooks/useAuth";
 
@@ -27,7 +27,9 @@ export default function VmManagement() {
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
   
-  const { data: vmList, refetch } = trpc.vms.list.useQuery();
+  const { data: vmList, refetch } = trpc.vms.list.useQuery(undefined, {
+    refetchInterval: 5000, // リアルタイム更新（5秒ごと）
+  });
   const updateStatus = trpc.vms.updateStatus.useMutation({ onSuccess: () => refetch() });
   const isolateMutation = trpc.kernel.isolateProcess.useMutation();
   const blockNetworkMutation = trpc.kernel.blockNetwork.useMutation();
@@ -35,6 +37,43 @@ export default function VmManagement() {
   
   const [selectedVmId, setSelectedVmId] = useState<number | null>(null);
   const [isolateReason, setIsolateReason] = useState("");
+  const [vmStatusHistory, setVmStatusHistory] = useState<Record<number, string>>({});
+  const [previousStatuses, setPreviousStatuses] = useState<Record<number, string>>({});
+  const [alerts, setAlerts] = useState<Array<{ id: string; vmId: number; message: string; type: "info" | "warning" | "error"; timestamp: Date }>>([]);
+
+  // VM 状況変化の監視
+  useEffect(() => {
+    if (!vmList) return;
+
+    vmList.forEach((vm) => {
+      const prevStatus = previousStatuses[vm.id];
+      if (prevStatus && prevStatus !== vm.status) {
+        // 状況が変化した
+        const alertMsg = `VM ${vm.name} の状況が ${prevStatus} から ${vm.status} に変更されました`;
+        const alertType = vm.status === "error" ? "error" : prevStatus !== vm.status && vm.status !== "running" ? "warning" : "info";
+        
+        setAlerts((prev) => [
+          {
+            id: `${vm.id}-${Date.now()}`,
+            vmId: vm.id,
+            message: alertMsg,
+            type: alertType,
+            timestamp: new Date(),
+          },
+          ...prev.slice(0, 9), // 最新10件を保持
+        ]);
+
+        toast[alertType === "error" ? "error" : alertType === "warning" ? "warning" : "info"](alertMsg);
+      }
+    });
+
+    // 状況履歴を更新
+    const newHistory: Record<number, string> = {};
+    vmList.forEach((vm) => {
+      newHistory[vm.id] = vm.status;
+    });
+    setPreviousStatuses(newHistory);
+  }, [vmList]);
 
   return (
     <div className="space-y-4">
@@ -45,24 +84,77 @@ export default function VmManagement() {
         </p>
       </div>
 
+      {/* VM 監視パネル */}
+      {alerts.length > 0 && (
+        <Card className="border-border/50 bg-card/80 border-yellow-500/30">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <AlertCircle className="h-4 w-4 text-yellow-400" />
+              VM Status Alerts ({alerts.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2 max-h-48 overflow-y-auto">
+              {alerts.map((alert) => (
+                <div
+                  key={alert.id}
+                  className={`p-2 rounded text-xs border ${
+                    alert.type === "error"
+                      ? "bg-red-500/10 border-red-500/30 text-red-400"
+                      : alert.type === "warning"
+                      ? "bg-yellow-500/10 border-yellow-500/30 text-yellow-400"
+                      : "bg-blue-500/10 border-blue-500/30 text-blue-400"
+                  }`}
+                >
+                  <div className="flex items-start justify-between">
+                    <span className="flex-1">{alert.message}</span>
+                    <span className="text-[10px] text-muted-foreground ml-2 shrink-0">
+                      {alert.timestamp.toLocaleTimeString("ja-JP")}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* VM リスト */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {vmList?.map((vm) => {
           const sc = statusConfig[vm.status] ?? statusConfig.error;
+          const isIsolated = false; // 隔離状況は別のフラグで追追
+          
           return (
-            <Card key={vm.id} className="border-border/50 bg-card/80">
+            <Card key={vm.id} className={`border-border/50 bg-card/80 ${isIsolated ? "border-purple-500/50" : ""}`}>
               <CardHeader className="pb-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Server className={`h-4 w-4 ${vm.status === "running" ? "text-green-400" : "text-muted-foreground"}`} />
                     <CardTitle className="text-sm">{vm.name}</CardTitle>
                   </div>
-                  <Badge variant="outline" className={`text-[10px] ns-mono ${sc.color}`}>
-                    {sc.label}
-                  </Badge>
+                  <div className="flex items-center gap-2">
+                    {isIsolated && (
+                      <Shield className="h-3 w-3 text-purple-400" />
+                    )}
+                    <Badge variant="outline" className={`text-[10px] ns-mono ${sc.color}`}>
+                      {sc.label}
+                    </Badge>
+                  </div>
                 </div>
                 <div className="text-[10px] ns-mono text-muted-foreground">{vm.vmId}</div>
               </CardHeader>
               <CardContent className="space-y-3">
+                {/* Isolation Status */}
+                {isIsolated && (
+                  <div className="p-2 rounded bg-purple-500/10 border border-purple-500/30">
+                    <div className="flex items-center gap-2 text-xs text-purple-400">
+                      <Eye className="h-3 w-3" />
+                      <span>隔離中 — カーネルレベルで監視</span>
+                    </div>
+                  </div>
+                )}
+
                 {/* Resource Usage */}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between text-xs">
@@ -144,6 +236,7 @@ export default function VmManagement() {
                             });
                             toast.success("プロセスを隔離しました");
                             setIsolateReason("");
+                            refetch();
                           } catch (error) {
                             toast.error("隔離に失敗しました");
                           }

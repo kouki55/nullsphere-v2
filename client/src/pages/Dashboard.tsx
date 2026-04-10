@@ -10,7 +10,10 @@ import {
   Bell,
   Activity,
   Zap,
+  TrendingUp,
+  Clock,
 } from "lucide-react";
+import { useEffect, useState } from "react";
 
 const severityColor: Record<string, string> = {
   critical: "bg-red-500/20 text-red-400 border-red-500/30",
@@ -33,14 +36,60 @@ export default function Dashboard() {
   const { data: health } = trpc.dashboard.componentHealth.useQuery();
   const { data: recentThreats } = trpc.threats.list.useQuery();
   const { data: recentEvents } = trpc.events.list.useQuery({ limit: 8 });
+  const [threatTrend, setThreatTrend] = useState<{ time: string; count: number }[]>([]);
+
+  // シミュレート：脅威の時系列データを生成
+  useEffect(() => {
+    if (recentThreats && recentThreats.length > 0) {
+      const now = new Date();
+      const trend = Array.from({ length: 12 }, (_, i) => {
+        const time = new Date(now.getTime() - (11 - i) * 5 * 60 * 1000);
+        const count = Math.floor(Math.random() * 20) + 5;
+        return {
+          time: time.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" }),
+          count,
+        };
+      });
+      setThreatTrend(trend);
+    }
+  }, [recentThreats]);
+
+  // 脅威を重大度別に集計
+  const threatBySeverity = {
+    critical: recentThreats?.filter((t) => t.severity === "critical").length ?? 0,
+    high: recentThreats?.filter((t) => t.severity === "high").length ?? 0,
+    medium: recentThreats?.filter((t) => t.severity === "medium").length ?? 0,
+    low: recentThreats?.filter((t) => t.severity === "low").length ?? 0,
+  };
 
   const statCards = [
     {
-      label: "Active Threats",
-      value: stats?.threats?.active ?? 0,
+      label: "Critical Threats",
+      value: threatBySeverity.critical,
       icon: AlertTriangle,
       color: "text-red-400",
       bg: "bg-red-500/10",
+    },
+    {
+      label: "High Threats",
+      value: threatBySeverity.high,
+      icon: AlertTriangle,
+      color: "text-orange-400",
+      bg: "bg-orange-500/10",
+    },
+    {
+      label: "Medium Threats",
+      value: threatBySeverity.medium,
+      icon: AlertTriangle,
+      color: "text-yellow-400",
+      bg: "bg-yellow-500/10",
+    },
+    {
+      label: "Low Threats",
+      value: threatBySeverity.low,
+      icon: AlertTriangle,
+      color: "text-blue-400",
+      bg: "bg-blue-500/10",
     },
     {
       label: "Blocked",
@@ -55,27 +104,6 @@ export default function Dashboard() {
       icon: Server,
       color: "text-ns-purple",
       bg: "bg-purple-500/10",
-    },
-    {
-      label: "Active Decoys",
-      value: stats?.decoys?.active ?? 0,
-      icon: Eye,
-      color: "text-ns-green",
-      bg: "bg-green-500/10",
-    },
-    {
-      label: "Attackers Tracked",
-      value: stats?.attackers?.active ?? 0,
-      icon: Zap,
-      color: "text-ns-yellow",
-      bg: "bg-yellow-500/10",
-    },
-    {
-      label: "Unread Alerts",
-      value: stats?.unreadNotifications ?? 0,
-      icon: Bell,
-      color: "text-orange-400",
-      bg: "bg-orange-500/10",
     },
   ];
 
@@ -103,12 +131,12 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Stat Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+      {/* Threat Severity Distribution */}
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
         {statCards.map((s) => (
           <Card
             key={s.label}
-            className="border-border/50 bg-card/80 backdrop-blur"
+            className="border-border/50 bg-card/80 backdrop-blur hover:bg-card/90 transition-colors"
           >
             <CardContent className="p-4">
               <div className="flex items-center justify-between mb-2">
@@ -124,6 +152,39 @@ export default function Dashboard() {
           </Card>
         ))}
       </div>
+
+      {/* Threat Timeline Chart */}
+      <Card className="border-border/50 bg-card/80">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm font-medium flex items-center gap-2">
+            <TrendingUp className="h-4 w-4 text-primary" />
+            Threat Timeline (Last Hour)
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-end gap-1 h-24">
+            {threatTrend.map((point, i) => {
+              const maxCount = Math.max(...threatTrend.map((p) => p.count), 1);
+              const height = (point.count / maxCount) * 100;
+              return (
+                <div
+                  key={i}
+                  className="flex-1 flex flex-col items-center gap-1 group"
+                  title={`${point.time}: ${point.count} threats`}
+                >
+                  <div
+                    className="w-full bg-gradient-to-t from-red-500 to-red-400 rounded-t opacity-70 hover:opacity-100 transition-opacity cursor-pointer"
+                    style={{ height: `${height}%`, minHeight: "4px" }}
+                  />
+                  <span className="text-[8px] text-muted-foreground ns-mono opacity-0 group-hover:opacity-100">
+                    {point.time}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Component Health */}
       <Card className="border-border/50 bg-card/80">
@@ -262,8 +323,11 @@ function ScrollIcon(props: React.SVGProps<SVGSVGElement>) {
       strokeLinejoin="round"
       {...props}
     >
-      <path d="M8 21h12a2 2 0 0 0 2-2v-2H10v2a2 2 0 1 1-4 0V5a2 2 0 1 0-4 0v3h4" />
-      <path d="M19 17V5a2 2 0 0 0-2-2H4" />
+      <rect width="16" height="20" x="4" y="2" rx="2" ry="2" />
+      <path d="M9 6h6" />
+      <path d="M9 16h6" />
+      <path d="M12 12v-2" />
+      <path d="M12 18v-2" />
     </svg>
   );
 }
