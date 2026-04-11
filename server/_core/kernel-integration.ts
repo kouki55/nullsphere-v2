@@ -7,6 +7,8 @@
 import { Server as HTTPServer } from "http";
 import { Server as SocketIOServer } from "socket.io";
 import { KernelBridge } from "../kernel-bridge";
+import { setupThreatFeedHandlers } from "./threat-feed-handler";
+import type { ThreatFeedEvent } from "./types/threat-feed";
 
 export function setupKernelIntegration(httpServer: HTTPServer) {
   // Socket.io サーバーを初期化
@@ -36,8 +38,13 @@ export function setupKernelIntegration(httpServer: HTTPServer) {
     });
   });
 
+  // 脅威フィード・ハンドラーを設定
+  setupThreatFeedHandlers(io, kernelBridge);
+
   // KernelBridge を起動（nl_bridge.py からのイベント受信）
   kernelBridge.start(9998);
+
+  console.log("[Kernel Integration] WebSocket threat feed initialized");
 
   return { io, kernelBridge };
 }

@@ -6,6 +6,7 @@ import ErrorBoundary from "./components/ErrorBoundary";
 import DashboardLayout from "./components/DashboardLayout";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { lazy, Suspense } from "react";
+import { SocketProvider } from "./_core/hooks/useSocket";
 
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const Architecture = lazy(() => import("./pages/Architecture"));
@@ -67,10 +68,12 @@ function App() {
   return (
     <ErrorBoundary>
       <ThemeProvider defaultTheme="dark">
-        <TooltipProvider>
-          <Toaster />
-          <Router />
-        </TooltipProvider>
+        <SocketProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Router />
+          </TooltipProvider>
+        </SocketProvider>
       </ThemeProvider>
     </ErrorBoundary>
   );

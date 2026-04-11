@@ -14,6 +14,7 @@ import {
   Clock,
 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { ThreatFeed } from "@/components/ThreatFeed";
 
 const severityColor: Record<string, string> = {
   critical: "bg-red-500/20 text-red-400 border-red-500/30",
@@ -232,14 +233,19 @@ export default function Dashboard() {
         </CardContent>
       </Card>
 
+      {/* Real-time Threat Feed */}
+      <Card className="border-border/50 bg-card/80 h-96">
+        <ThreatFeed maxItems={50} autoScroll={true} />
+      </Card>
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Recent Threats */}
         <Card className="border-border/50 bg-card/80">
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4 text-red-400" />
-              Recent Threats
-            </CardTitle>
+          <CardTitle className="text-sm font-medium flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4 text-red-400" />
+            Recent Threats (Last 6)
+          </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">

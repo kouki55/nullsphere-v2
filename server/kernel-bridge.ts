@@ -7,6 +7,8 @@ import { eq } from "drizzle-orm";
 import net from "net";
 import { signLog, verifyLogSignature, generateAuthToken, validateLog, type SignedLogEntry } from "./security/log-signature";
 import { applyKernelBridgeSecurity } from "./security/kernel-bridge-security";
+import { convertKernelEventToThreatFeed, filterThreatFeedBySeverity } from "./_core/threat-feed-processor";
+import { THREAT_FEED_EVENTS } from "./_core/types/threat-feed";
 
 export interface KernelEvent {
   source: string;
@@ -40,6 +42,8 @@ export class KernelBridge {
   private io: SocketIOServer;
   private tcpServer: net.Server | null = null;
   private running = false;
+  private threatFeedBuffer: any[] = [];
+  private maxBufferSize = 1000;
 
   constructor(io: SocketIOServer) {
     this.io = io;
@@ -73,6 +77,10 @@ export class KernelBridge {
 
             const event: KernelEvent = logData;
             await this.handleKernelEvent(event, db);
+
+            // 脅威フィード・イベントを生成してブロードキャスト
+            const threatFeedEvent = convertKernelEventToThreatFeed(event);
+            this.broadcastThreatFeed(threatFeedEvent);
 
             this.io.emit("kernel:event", event);
           } catch (e) {
@@ -238,5 +246,38 @@ export class KernelBridge {
 
   public getAuthToken(): string {
     return generateAuthToken("kernel-bridge");
+  }
+
+  /**
+   * 脅威フィード・イベントをブロードキャスト
+   */
+  private broadcastThreatFeed(threatFeedEvent: any) {
+    // バッファに追加
+    this.threatFeedBuffer.push(threatFeedEvent);
+    if (this.threatFeedBuffer.length > this.maxBufferSize) {
+      this.threatFeedBuffer.shift();
+    }
+
+    // 深刻度が高いイベントのみをリアルタイムブロードキャスト
+    if (['critical', 'high'].includes(threatFeedEvent.severity)) {
+      this.io.emit(THREAT_FEED_EVENTS.THREAT_DETECTED, threatFeedEvent);
+    }
+
+    // すべてのイベントをフィードストリームに追加
+    this.io.emit(THREAT_FEED_EVENTS.THREAT_FEED, threatFeedEvent);
+  }
+
+  /**
+   * クライアントに脅威フィード・バッファを送信
+   */
+  public getThreatFeedBuffer(): any[] {
+    return [...this.threatFeedBuffer];
+  }
+
+  /**
+   * 脅威フィード・バッファをクリア
+   */
+  public clearThreatFeedBuffer() {
+    this.threatFeedBuffer = [];
   }
 }
