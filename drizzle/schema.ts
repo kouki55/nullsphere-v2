@@ -236,3 +236,51 @@ export const permissionRequests = mysqlTable("permissionRequests", {
 });
 export type PermissionRequest = typeof permissionRequests.$inferSelect;
 export type InsertPermissionRequest = typeof permissionRequests.$inferInsert;
+
+/** リアルタイム脅威フィードテーブル - Phase 24 で受信したリアルタイムイベント */
+export const threatFeeds = mysqlTable("threatFeeds", {
+  id: int("id").autoincrement().primaryKey(),
+  feedId: varchar("feedId", { length: 64 }).notNull().unique(),
+  type: mysqlEnum("type", ["intrusion", "malware", "privilege_escalation", "data_exfiltration", "lateral_movement", "reconnaissance", "network_anomaly", "process_anomaly"]).notNull(),
+  severity: mysqlEnum("severity", ["critical", "high", "medium", "low", "info"]).notNull(),
+  title: varchar("title", { length: 256 }).notNull(),
+  description: text("description").notNull(),
+  sourceIp: varchar("sourceIp", { length: 45 }).notNull(),
+  sourceCountry: varchar("sourceCountry", { length: 64 }),
+  targetHost: varchar("targetHost", { length: 256 }),
+  targetPort: int("targetPort"),
+  command: text("command"),
+  status: mysqlEnum("status", ["detected", "acknowledged", "investigating", "resolved", "false_positive"]).default("detected").notNull(),
+  metadata: json("metadata"),
+  detectedAt: timestamp("detectedAt").defaultNow().notNull(),
+  acknowledgedAt: timestamp("acknowledgedAt"),
+  resolvedAt: timestamp("resolvedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type ThreatFeed = typeof threatFeeds.$inferSelect;
+export type InsertThreatFeed = typeof threatFeeds.$inferInsert;
+
+/** 脅威分析テーブル - 統計情報と傾向分析用 */
+export const threatAnalytics = mysqlTable("threatAnalytics", {
+  id: int("id").autoincrement().primaryKey(),
+  analyticsId: varchar("analyticsId", { length: 64 }).notNull().unique(),
+  period: mysqlEnum("period", ["hourly", "daily", "weekly", "monthly"]).notNull(),
+  timestamp: timestamp("timestamp").notNull(),
+  totalThreats: int("totalThreats").default(0).notNull(),
+  criticalCount: int("criticalCount").default(0).notNull(),
+  highCount: int("highCount").default(0).notNull(),
+  mediumCount: int("mediumCount").default(0).notNull(),
+  lowCount: int("lowCount").default(0).notNull(),
+  infoCount: int("infoCount").default(0).notNull(),
+  blockedCount: int("blockedCount").default(0).notNull(),
+  resolvedCount: int("resolvedCount").default(0).notNull(),
+  uniqueAttackers: int("uniqueAttackers").default(0).notNull(),
+  topAttackType: varchar("topAttackType", { length: 64 }),
+  topSourceCountry: varchar("topSourceCountry", { length: 64 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type ThreatAnalytic = typeof threatAnalytics.$inferSelect;
+export type InsertThreatAnalytic = typeof threatAnalytics.$inferInsert;

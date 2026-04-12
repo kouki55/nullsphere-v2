@@ -7,6 +7,7 @@
 import { Server as SocketIOServer, Socket } from 'socket.io';
 import type { KernelBridge } from '../kernel-bridge';
 import { THREAT_FEED_EVENTS } from './types/threat-feed';
+import { persistThreatFeed } from './threat-persistence';
 
 /**
  * Socket.io 接続時に脅威フィード・ハンドラーを設定
@@ -56,17 +57,18 @@ export function setupThreatFeedHandlers(
 }
 
 /**
- * 脅威フィード・イベントをフィルタリングして送信
+ * 脅威フィード・イベントをフィルタリングして送信・永続化
  */
-export function broadcastFilteredThreatFeed(
+export async function broadcastFilteredThreatFeed(
   io: SocketIOServer,
   threatFeedEvent: any,
   options?: {
     minSeverity?: 'critical' | 'high' | 'medium' | 'low' | 'info';
     excludeInfo?: boolean;
+    persistToDb?: boolean;
   }
 ) {
-  const { minSeverity = 'low', excludeInfo = false } = options || {};
+  const { minSeverity = 'low', excludeInfo = false, persistToDb = true } = options || {};
 
   // 深刻度フィルタリング
   const severityOrder: Record<string, number> = {
@@ -91,4 +93,11 @@ export function broadcastFilteredThreatFeed(
 
   // ブロードキャスト
   io.emit(THREAT_FEED_EVENTS.THREAT_FEED, threatFeedEvent);
+
+  // データベースに永続化（非同期）
+  if (persistToDb) {
+    persistThreatFeed(threatFeedEvent).catch((err) => {
+      console.error('[ThreatFeedHandler] Failed to persist threat feed:', err);
+    });
+  }
 }

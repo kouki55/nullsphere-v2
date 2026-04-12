@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Brain, Loader2, FileText } from "lucide-react";
 import { useState } from "react";
 import { Streamdown } from "streamdown";
+import { ThreatAnalyticsDashboard } from "@/components/ThreatAnalyticsDashboard";
 
 const severityColor: Record<string, string> = {
   critical: "bg-red-500/20 text-red-400 border-red-500/30",
@@ -18,6 +19,7 @@ export default function Analysis() {
   const { data: threatList } = trpc.threats.list.useQuery();
   const [selectedThreatId, setSelectedThreatId] = useState<string>("");
   const [analysisResult, setAnalysisResult] = useState<string>("");
+  const [showAnalytics, setShowAnalytics] = useState(false);
   const analyzeMutation = trpc.analysis.analyzeThreat.useMutation({
     onSuccess: (data) => setAnalysisResult(data.analysis),
   });
@@ -26,13 +28,25 @@ export default function Analysis() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">AI Threat Analysis</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          LLMを活用した攻撃パターン分析・意図推定・対策レポート生成
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Threat Analysis & Analytics</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            LLMを活用した攻撃パターン分析・意図推定・対策レポート生成
+          </p>
+        </div>
+        <Button
+          variant={showAnalytics ? "default" : "outline"}
+          onClick={() => setShowAnalytics(!showAnalytics)}
+          className="text-xs"
+        >
+          {showAnalytics ? "Show AI Analysis" : "Show Analytics"}
+        </Button>
       </div>
 
+      {showAnalytics && <ThreatAnalyticsDashboard days={7} />}
+
+      {!showAnalytics && (
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Threat Selection */}
         <div className="space-y-4">
@@ -160,6 +174,7 @@ export default function Analysis() {
           </Card>
         </div>
       </div>
+      )}
     </div>
   );
 }
