@@ -5,7 +5,7 @@
  */
 
 import { z } from 'zod';
-import { publicProcedure, router } from '../_core/trpc';
+import { protectedProcedure, router } from '../_core/trpc';
 import {
   getThreatFeedsInPeriod,
   getThreatAnalytics,
@@ -16,7 +16,7 @@ export const threatAnalyticsRouter = router({
   /**
    * 指定期間の脅威フィード・イベントを取得
    */
-  getThreatsByPeriod: publicProcedure
+  getThreatsByPeriod: protectedProcedure
     .input(
       z.object({
         startDate: z.string().datetime(),
@@ -58,7 +58,7 @@ export const threatAnalyticsRouter = router({
   /**
    * 脅威分析データを取得（時系列）
    */
-  getAnalyticsByPeriod: publicProcedure
+  getAnalyticsByPeriod: protectedProcedure
     .input(
       z.object({
         period: z.enum(['hourly', 'daily', 'weekly', 'monthly']),
@@ -88,7 +88,7 @@ export const threatAnalyticsRouter = router({
   /**
    * 脅威分析データを計算して保存
    */
-  calculateAnalytics: publicProcedure
+  calculateAnalytics: protectedProcedure
     .input(
       z.object({
         period: z.enum(['hourly', 'daily', 'weekly', 'monthly']),
@@ -117,7 +117,7 @@ export const threatAnalyticsRouter = router({
   /**
    * 脅威統計サマリーを取得
    */
-  getSummary: publicProcedure
+  getSummary: protectedProcedure
     .input(
       z.object({
         days: z.number().min(1).max(365).default(7),
@@ -159,7 +159,7 @@ export const threatAnalyticsRouter = router({
   /**
    * 攻撃タイプ別の統計を取得
    */
-  getAttackTypeDistribution: publicProcedure
+  getAttackTypeDistribution: protectedProcedure
     .input(
       z.object({
         days: z.number().min(1).max(365).default(7),
@@ -200,7 +200,7 @@ export const threatAnalyticsRouter = router({
   /**
    * 攻撃元国別の統計を取得
    */
-  getSourceCountryDistribution: publicProcedure
+  getSourceCountryDistribution: protectedProcedure
     .input(
       z.object({
         days: z.number().min(1).max(365).default(7),
@@ -247,7 +247,7 @@ export const threatAnalyticsRouter = router({
   /**
    * 時系列の脅威発生数を取得
    */
-  getThreatTimeSeries: publicProcedure
+  getThreatTimeSeries: protectedProcedure
     .input(
       z.object({
         days: z.number().min(1).max(365).default(30),
