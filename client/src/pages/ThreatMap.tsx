@@ -14,6 +14,55 @@ const severityColor: Record<string, string> = {
 
 const TARGET_LOCATION = { lat: 35.6762, lng: 139.6503 }; // Tokyo - target server
 
+// [C-1] XSS 修正: innerHTML テンプレートリテラルを廃止し、
+//        DOM API で要素を組み立てることでエスケープを保証する
+function createMarkerElement(color: string, labelText: string): HTMLElement {
+  const wrapper = document.createElement("div");
+  wrapper.style.cssText =
+    "display:flex;flex-direction:column;align-items:center;";
+
+  const dot = document.createElement("div");
+  dot.style.cssText = [
+    "width:12px",
+    "height:12px",
+    "border-radius:50%",
+    `background:${color}`,
+    `border:2px solid ${color}`,
+    `box-shadow:0 0 10px ${color}80`,
+    "animation:pulse 2s infinite",
+  ].join(";");
+
+  const label = document.createElement("div");
+  label.style.cssText =
+    "font-size:9px;font-family:monospace;margin-top:3px;white-space:nowrap;";
+  label.style.color = color;
+  // textContent はブラウザが自動エスケープするため XSS の心配がない
+  label.textContent = labelText;
+
+  wrapper.appendChild(dot);
+  wrapper.appendChild(label);
+  return wrapper;
+}
+
+function createTargetMarkerElement(): HTMLElement {
+  const wrapper = document.createElement("div");
+  wrapper.style.cssText =
+    "display:flex;flex-direction:column;align-items:center;";
+
+  const dot = document.createElement("div");
+  dot.style.cssText =
+    "width:16px;height:16px;border-radius:50%;background:#00ff99;border:2px solid #00cc77;box-shadow:0 0 12px rgba(0,255,153,0.5);";
+
+  const label = document.createElement("div");
+  label.style.cssText =
+    "font-size:10px;color:#00ff99;font-family:monospace;margin-top:4px;white-space:nowrap;";
+  label.textContent = "TARGET SERVER";
+
+  wrapper.appendChild(dot);
+  wrapper.appendChild(label);
+  return wrapper;
+}
+
 export default function ThreatMap() {
   const { data: threatList } = trpc.threats.list.useQuery();
   const { data: attackerList } = trpc.attackers.list.useQuery();
@@ -46,16 +95,11 @@ export default function ThreatMap() {
         fullscreenControl: true,
       });
 
-      // Add target marker (Tokyo)
-      const targetEl = document.createElement("div");
-      targetEl.innerHTML = `<div style="display:flex;flex-direction:column;align-items:center;">
-        <div style="width:16px;height:16px;border-radius:50%;background:#00ff99;border:2px solid #00cc77;box-shadow:0 0 12px rgba(0,255,153,0.5);"></div>
-        <div style="font-size:10px;color:#00ff99;font-family:monospace;margin-top:4px;white-space:nowrap;">TARGET SERVER</div>
-      </div>`;
+      // Add target marker (Tokyo) - 静的テキストのみなので安全
       new google.maps.marker.AdvancedMarkerElement({
         map,
         position: TARGET_LOCATION,
-        content: targetEl,
+        content: createTargetMarkerElement(),
       });
 
       // Add attacker markers and attack lines
@@ -65,16 +109,14 @@ export default function ThreatMap() {
           const pos = { lat: parseFloat(attacker.lat), lng: parseFloat(attacker.lng) };
           const color = severityColor[attacker.threatLevel] || "#00c8ff";
 
-          const el = document.createElement("div");
-          el.innerHTML = `<div style="display:flex;flex-direction:column;align-items:center;">
-            <div style="width:12px;height:12px;border-radius:50%;background:${color};border:2px solid ${color};box-shadow:0 0 10px ${color}80;animation:pulse 2s infinite;"></div>
-            <div style="font-size:9px;color:${color};font-family:monospace;margin-top:3px;white-space:nowrap;">${attacker.ip}</div>
-          </div>`;
+          // [C-1] 攻撃者 IP は攻撃者制御の値のため textContent で安全に挿入
+          const el = createMarkerElement(color, attacker.ip);
 
           const marker = new google.maps.marker.AdvancedMarkerElement({
             map,
             position: pos,
             content: el,
+            // title 属性はブラウザが自動エスケープするため安全
             title: `${attacker.attackerId} - ${attacker.ip} (${attacker.country})`,
           });
           markersRef.current.push(marker);

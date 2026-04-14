@@ -48,18 +48,21 @@ class TokenBucket {
   private readonly capacity: number;
   private readonly refillRate: number; // tokens per second
   private lastRefillTime: number;
+  public lastAccessTime: number;
 
   constructor(capacity: number, refillRate: number) {
     this.capacity = capacity;
     this.tokens = capacity;
     this.refillRate = refillRate;
     this.lastRefillTime = Date.now();
+    this.lastAccessTime = Date.now();
   }
 
   /**
    * トークンを消費できるかチェック
    */
   canConsume(tokens: number = 1): boolean {
+    this.lastAccessTime = Date.now();
     this.refill();
     if (this.tokens >= tokens) {
       this.tokens -= tokens;
@@ -89,11 +92,13 @@ class RateLimiter {
   private readonly capacity: number;
   private readonly refillRate: number;
   private readonly cleanupInterval: number;
+  private readonly bucketExpiry: number;
 
   constructor(capacity: number = 100, refillRate: number = 10) {
     this.capacity = capacity;
     this.refillRate = refillRate;
     this.cleanupInterval = 60000; // 1 minute
+    this.bucketExpiry = 300000; // 5 minutes
 
     // 定期的に古いバケットをクリーンアップ
     setInterval(() => this.cleanup(), this.cleanupInterval);
@@ -112,11 +117,22 @@ class RateLimiter {
   }
 
   /**
-   * 古いバケットをクリーンアップ
+   * [NEW-1] 修正: 古いバケットをクリーンアップしてメモリリークを防止
    */
   private cleanup(): void {
-    // 実装: 最後にアクセスされてから一定時間経過したバケットを削除
-    // 簡略版では全バケットを保持
+    const now = Date.now();
+    let deletedCount = 0;
+
+    this.buckets.forEach((bucket, clientId) => {
+      if (now - bucket.lastAccessTime > this.bucketExpiry) {
+        this.buckets.delete(clientId);
+        deletedCount++;
+      }
+    });
+
+    if (deletedCount > 0) {
+      console.log(`[RateLimiter] Cleaned up ${deletedCount} expired buckets.`);
+    }
   }
 }
 
@@ -124,13 +140,21 @@ class RateLimiter {
 export const globalRateLimiter = new RateLimiter(100, 10); // 100 tokens, 10 tokens/sec
 
 /**
- * クライアント IP を取得
+ * [NEW-2] 修正: クライアント IP を安全に取得
+ * x-forwarded-for を無条件に信頼せず、環境変数 TRUST_PROXY が設定されている場合のみ使用
  */
 export function getClientIp(ctx: TrpcContext): string {
-  const forwarded = ctx.req.headers['x-forwarded-for'];
-  if (typeof forwarded === 'string') {
-    return forwarded.split(',')[0].trim();
+  const trustProxy = process.env.TRUST_PROXY === 'true' || process.env.TRUST_PROXY === '1';
+  
+  if (trustProxy) {
+    const forwarded = ctx.req.headers['x-forwarded-for'];
+    if (typeof forwarded === 'string') {
+      // 最初の IP を取得（プロキシ経由の場合）
+      return forwarded.split(',')[0].trim();
+    }
   }
+  
+  // 直接接続の IP を使用
   return ctx.req.socket.remoteAddress || 'unknown';
 }
 
