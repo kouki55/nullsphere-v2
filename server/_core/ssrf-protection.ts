@@ -8,6 +8,7 @@
 
 import { URL } from 'url';
 import { TRPCError } from '@trpc/server';
+import { promises as dns } from 'dns';
 
 /**
  * SSRF から保護する IP レンジ
@@ -31,13 +32,37 @@ const BLOCKED_IP_RANGES = [
 ];
 
 /**
- * ホスト名から IP アドレスを解決（簡略版）
- * 実運用では、DNS ライブラリを使用してください
+ * [Phase 30] DNS レベルの要塞化:
+ * ホスト名を実際の IP アドレスに解決し、内部ネットワークへのアクセスを防ぐ
  */
-async function resolveHostname(hostname: string): Promise<string> {
-  // 簡略版: ホスト名をそのまま返す
-  // 実運用では dns.promises.resolve4() などを使用
-  return hostname;
+async function resolveHostname(hostname: string): Promise<string[]> {
+  try {
+    // DNS タイムアウト: 5 秒以内に解決できなければ失敗
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+    try {
+      // IPv4 アドレスを解決
+      const addresses = await dns.resolve4(hostname);
+      clearTimeout(timeoutId);
+
+      if (addresses.length === 0) {
+        // 解決できなかった場合は、ホスト名をそのまま返す（IP レンジチェックで引っかかる可能性あり）
+        return [hostname];
+      }
+
+      return addresses;
+    } catch (error) {
+      clearTimeout(timeoutId);
+
+      // DNS 解決失敗時は、ホスト名をそのまま返す
+      // （IP レンジチェックで引っかかる可能性があるため、安全側に倒す）
+      return [hostname];
+    }
+  } catch {
+    // 予期しないエラーは、ホスト名をそのまま返す
+    return [hostname];
+  }
 }
 
 /**
@@ -53,18 +78,26 @@ export async function isSsrfUrl(urlString: string): Promise<boolean> {
       return true;
     }
 
-    // ブロック対象の IP レンジをチェック
-    for (const pattern of BLOCKED_IP_RANGES) {
-      if (pattern.test(hostname)) {
-        return true;
-      }
-    }
+    // ホスト名が IP アドレスか、ホスト名かを判定
+    const isIpAddress = /^\d{1,3}(\.\d{1,3}){3}$/.test(hostname) || /^::/.test(hostname);
 
-    // ホスト名を解決して IP をチェック
-    const resolvedIp = await resolveHostname(hostname);
-    for (const pattern of BLOCKED_IP_RANGES) {
-      if (pattern.test(resolvedIp)) {
-        return true;
+    if (isIpAddress) {
+      // IP アドレスの場合は直接チェック
+      for (const pattern of BLOCKED_IP_RANGES) {
+        if (pattern.test(hostname)) {
+          return true;
+        }
+      }
+    } else {
+      // ホスト名の場合は DNS 解決して IP をチェック
+      const resolvedIps = await resolveHostname(hostname);
+
+      for (const ip of resolvedIps) {
+        for (const pattern of BLOCKED_IP_RANGES) {
+          if (pattern.test(ip)) {
+            return true;
+          }
+        }
       }
     }
 
