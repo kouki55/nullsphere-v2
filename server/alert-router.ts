@@ -11,6 +11,7 @@ import { getDb } from "./db";
 import { alertSettings } from "../drizzle/schema";
 import { eq, and } from "drizzle-orm";
 import { randomUUID } from "crypto";
+import { validateWebhookUrl } from "./_core/ssrf-protection";
 
 export const alertRouter = router({
   /**
@@ -50,6 +51,12 @@ export const alertRouter = router({
           message: "Database not available",
         });
       }
+
+      // [M-4] Webhook SSRF 対策: Webhook URL を検証
+      if (input.notificationMethod === "webhook" && input.webhookUrl) {
+        await validateWebhookUrl(input.webhookUrl);
+      }
+
       const alertId = randomUUID();
 
       try {
@@ -123,6 +130,13 @@ export const alertRouter = router({
         });
       }
 
+      // [M-4] Webhook SSRF 対策: Webhook URL を検証
+      if (input.notificationMethod === "webhook" && input.webhookUrl) {
+        await validateWebhookUrl(input.webhookUrl);
+      } else if (input.webhookUrl) {
+        await validateWebhookUrl(input.webhookUrl);
+      }
+
       try {
         const alert = await db
           .select()
@@ -156,7 +170,7 @@ export const alertRouter = router({
           message: "Alert updated",
         };
       } catch (error: any) {
-        if (error.code === "NOT_FOUND") throw error;
+        if (error instanceof TRPCError) throw error;
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
           message: "Failed to update alert",
@@ -207,7 +221,7 @@ export const alertRouter = router({
           message: "Alert deleted",
         };
       } catch (error: any) {
-        if (error.code === "NOT_FOUND") throw error;
+        if (error instanceof TRPCError) throw error;
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
           message: "Failed to delete alert",
