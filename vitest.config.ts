@@ -13,7 +13,24 @@ export default defineConfig({
     },
   },
   test: {
+    globals: true,
     environment: "node",
-    include: ["server/**/*.test.ts", "server/**/*.spec.ts"],
+    // [Phase 31] CI/CD パイプラインでは、環境に依存しないテストのみを実行
+    // server/*.test.ts はデータベース接続が必要なため、除外
+    include: ["tests/**/*.test.ts"],
+    exclude: [
+      "node_modules/",
+      "dist/",
+      "server/**/*.test.ts",  // DB 依存的なテストを除外
+    ],
+    coverage: {
+      provider: "v8",
+      reporter: ["text", "json", "html"],
+      exclude: [
+        "node_modules/",
+        "tests/",
+        "dist/",
+      ],
+    },
   },
 });

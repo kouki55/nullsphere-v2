@@ -144,10 +144,15 @@ export const globalRateLimiter = new RateLimiter(100, 10); // 100 tokens, 10 tok
  * x-forwarded-for を無条件に信頼せず、環境変数 TRUST_PROXY が設定されている場合のみ使用
  */
 export function getClientIp(ctx: TrpcContext): string {
+  // テスト環境では req が存在しない場合がある
+  if (!ctx.req) {
+    return 'test-env';
+  }
+  
   const trustProxy = process.env.TRUST_PROXY === 'true' || process.env.TRUST_PROXY === '1';
   
   if (trustProxy) {
-    const forwarded = ctx.req.headers['x-forwarded-for'];
+    const forwarded = ctx.req.headers?.['x-forwarded-for'];
     if (typeof forwarded === 'string') {
       // 最初の IP を取得（プロキシ経由の場合）
       return forwarded.split(',')[0].trim();
@@ -155,7 +160,7 @@ export function getClientIp(ctx: TrpcContext): string {
   }
   
   // 直接接続の IP を使用
-  return ctx.req.socket.remoteAddress || 'unknown';
+  return ctx.req.socket?.remoteAddress || 'unknown';
 }
 
 /**
